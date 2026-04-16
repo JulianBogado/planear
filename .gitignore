@@ -1,0 +1,51 @@
+# Dependencias
+node_modules/
+
+# Build
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Variables de entorno (NUNCA commitear)
+.env
+.env.local
+.env.*.local
+*.local
+
+# Supabase CLI temporales
+supabase/.temp/
+
+# Claude Code / AI tooling
+.claude/
+.agents/
+skills-lock.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Tests / Coverage
+coverage/
+.nyc_output/
+
+# Caché de herramientas
+.vite/
+.turbo/
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db

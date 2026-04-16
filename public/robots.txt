@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard
+Disallow: /suscriptores
+Disallow: /estadisticas
+Disallow: /agenda
+Disallow: /ayuda
+Disallow: /configuracion
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://plane.ar/sitemap.xml

@@ -1,0 +1,158 @@
+import { useState, useEffect, useCallback } from 'react'
+import { addDays, format } from 'date-fns'
+import { supabase } from '../lib/supabase'
+import { computeStatus } from '../utils/status'
+
+const PLANS_SELECT = 'name, total_uses, duration_days, price'
+
+function withStatus(subscriber) {
+  const { status } = computeStatus(subscriber.end_date, subscriber.uses_remaining)
+  return { ...subscriber, status }
+}
+
+export function useSubscribers(businessId) {
+  const [subscribers, setSubscribers] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchSubscribers = useCallback(async () => {
+    if (!businessId) {
+      setSubscribers([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    const { data } = await supabase
+      .from('subscribers')
+      .select(`*, plans(${PLANS_SELECT})`)
+      .eq('business_id', businessId)
+      .order('name', { ascending: true })
+    setSubscribers((data ?? []).map(withStatus))
+    setLoading(false)
+  }, [businessId])
+
+  useEffect(() => {
+    fetchSubscribers()
+  }, [fetchSubscribers])
+
+  async function createSubscriber(subData) {
+    const plan = subData._plan
+    const startDate = subData.start_date || format(new Date(), 'yyyy-MM-dd')
+    const endDate = format(addDays(new Date(startDate + 'T00:00:00'), plan.duration_days), 'yyyy-MM-dd')
+    const usesRemaining = plan.total_uses
+    const { status } = computeStatus(endDate, usesRemaining)
+
+    const insertData = {
+      business_id: businessId,
+      plan_id: subData.plan_id,
+      name: subData.name,
+      phone: subData.phone || null,
+      dni: subData.dni || null,
+      notes: subData.notes || null,
+      start_date: startDate,
+      end_date: endDate,
+      uses_remaining: usesRemaining,
+      status,
+    }
+
+    const { data, error } = await supabase
+      .from('subscribers')
+      .insert(insertData)
+      .select(`*, plans(${PLANS_SELECT})`)
+      .single()
+
+    if (!error) setSubscribers(prev => [...prev, withStatus(data)].sort((a, b) => a.name.localeCompare(b.name)))
+    return { data, error }
+  }
+
+  async function updateSubscriber(id, updates) {
+    const { data, error } = await supabase
+      .from('subscribers')
+      .update(updates)
+      .eq('id', id)
+      .select(`*, plans(${PLANS_SELECT})`)
+      .single()
+    if (!error) setSubscribers(prev => prev.map(s => s.id === id ? withStatus(data) : s))
+    return { data, error }
+  }
+
+  async function deleteSubscriber(id) {
+    const { error } = await supabase.from('subscribers').delete().eq('id', id)
+    if (!error) setSubscribers(prev => prev.filter(s => s.id !== id))
+    return { error }
+  }
+
+  async function registerUse(subscriber, notes = null) {
+    const newUses = subscriber.uses_remaining - 1
+    const { status } = computeStatus(subscriber.end_date, newUses)
+
+    const logData = { subscriber_id: subscriber.id }
+    if (notes?.trim()) logData.notes = notes.trim()
+
+    const [{ data, error }] = await Promise.all([
+      supabase
+        .from('subscribers')
+        .update({ uses_remaining: newUses, status })
+        .eq('id', subscriber.id)
+        .select(`*, plans(${PLANS_SELECT})`)
+        .single(),
+      supabase.from('usage_logs').insert(logData),
+    ])
+
+    if (!error) setSubscribers(prev => prev.map(s => s.id === subscriber.id ? withStatus(data) : s))
+    return { data, error }
+  }
+
+  async function renewSubscriber(subscriber, amount, newPlan = null) {
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const plan = newPlan ?? subscriber.plans
+    const durationDays = plan?.duration_days ?? 30
+    const totalUses = plan?.total_uses ?? 1
+    const newEndDate = format(addDays(new Date(today + 'T00:00:00'), durationDays), 'yyyy-MM-dd')
+    const { status } = computeStatus(newEndDate, totalUses)
+
+    const updates = {
+      start_date: today,
+      end_date: newEndDate,
+      uses_remaining: totalUses,
+      status,
+    }
+
+    if (newPlan && newPlan.id !== subscriber.plan_id) {
+      updates.plan_id = newPlan.id
+    }
+
+    const ops = [
+      supabase
+        .from('subscribers')
+        .update(updates)
+        .eq('id', subscriber.id)
+        .select(`*, plans(${PLANS_SELECT})`)
+        .single(),
+    ]
+
+    if (amount && parseFloat(amount) > 0) {
+      ops.push(
+        supabase.from('payments').insert({
+          subscriber_id: subscriber.id,
+          amount: parseFloat(amount),
+          paid_at: new Date().toISOString(),
+        })
+      )
+    }
+
+    const [{ data, error }] = await Promise.all(ops)
+    if (!error) setSubscribers(prev => prev.map(s => s.id === subscriber.id ? withStatus(data) : s))
+    return { data, error }
+  }
+
+  return {
+    subscribers,
+    loading,
+    refetch: fetchSubscribers,
+    createSubscriber,
+    updateSubscriber,
+    deleteSubscriber,
+    registerUse,
+    renewSubscriber,
+  }
+}
