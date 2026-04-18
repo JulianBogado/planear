@@ -58,7 +58,7 @@ export default function Agenda() {
   const [newModal, setNewModal] = useState(false)
   const [modalDateStr, setModalDateStr] = useState(format(today, 'yyyy-MM-dd'))
   const [modalAppts, setModalAppts] = useState([])
-  const [newForm, setNewForm] = useState({ slot_start: '', client_name: '', notes: '' })
+  const [newForm, setNewForm] = useState({ slot_start: '', slot_end: '', client_name: '', notes: '' })
   const [saving, setSaving] = useState(false)
   const [subscriberSearch, setSubscriberSearch] = useState('')
   const [selectedSubscriber, setSelectedSubscriber] = useState(null)
@@ -107,13 +107,13 @@ export default function Agenda() {
     )
   }
 
-  const modalSlots = availability ? getAvailableSlots(availability, modalDateStr, modalAppts) : []
+  const modalSlots = availability?.length ? getAvailableSlots(availability, modalDateStr, modalAppts) : []
   const showTomorrow = isToday(selectedDate) && view === 'day'
 
   function openNewModal(date) {
     const d = date ?? selectedDate
     setModalDateStr(format(d, 'yyyy-MM-dd'))
-    setNewForm({ slot_start: '', client_name: '', notes: '' })
+    setNewForm({ slot_start: '', slot_end: '', client_name: '', notes: '' })
     setSubscriberSearch('')
     setSelectedSubscriber(null)
     setShowSubDropdown(false)
@@ -149,7 +149,9 @@ export default function Agenda() {
     if (!newForm.slot_start || !newForm.client_name.trim()) return
     setSaving(true)
     const slotStart = new Date(modalDateStr + 'T' + newForm.slot_start + ':00')
-    const slotEnd = new Date(slotStart.getTime() + (availability?.slot_duration ?? 60) * 60000)
+    const slotEnd = newForm.slot_end
+      ? new Date(modalDateStr + 'T' + newForm.slot_end + ':00')
+      : new Date(slotStart.getTime() + (availability?.[0]?.slot_duration ?? 60) * 60000)
     const { error } = await createAppointment({
       slot_start: slotStart.toISOString(),
       slot_end: slotEnd.toISOString(),
@@ -341,7 +343,7 @@ export default function Agenda() {
           <DatePicker
             label="Fecha"
             value={modalDateStr}
-            onChange={ds => { setModalDateStr(ds); setNewForm(p => ({ ...p, slot_start: '' })) }}
+            onChange={ds => { setModalDateStr(ds); setNewForm(p => ({ ...p, slot_start: '', slot_end: '' })) }}
           />
 
           <div>
@@ -350,11 +352,12 @@ export default function Agenda() {
               <div className="grid grid-cols-4 gap-2 max-h-44 overflow-y-auto">
                 {modalSlots.map(slot => {
                   const val = format(slot.start, 'HH:mm')
+                  const valEnd = format(slot.end, 'HH:mm')
                   return (
                     <button
                       key={val}
                       type="button"
-                      onClick={() => setNewForm(p => ({ ...p, slot_start: val }))}
+                      onClick={() => setNewForm(p => ({ ...p, slot_start: val, slot_end: valEnd }))}
                       className={`py-2 rounded-xl text-sm font-semibold transition-all border-2 ${
                         newForm.slot_start === val
                           ? 'bg-brand-50 border-brand-400 text-brand-700'
@@ -375,7 +378,7 @@ export default function Agenda() {
                   className="flex-1 bg-surface-tint rounded-2xl px-3 py-2.5 text-sm border-0 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   required
                 />
-                {availability && (
+                {availability?.length > 0 && (
                   <p className="text-xs text-stone-400">Día sin disponibilidad configurada</p>
                 )}
               </div>

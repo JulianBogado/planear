@@ -35,13 +35,14 @@ export default function PublicBooking() {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [form, setForm] = useState({ name: '', notes: '' })
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   // Build selectable dates array
-  const advance = availability?.advance_days ?? 7
+  const advance = availability?.[0]?.advance_days ?? 7
   const selectableDates = []
   for (let i = 0; i < advance; i++) {
     const d = addDays(today, i)
-    if (!availability || availability.days_of_week.includes(d.getDay())) {
+    if (!availability?.length || availability.some(b => b.days_of_week?.includes(d.getDay()))) {
       selectableDates.push(format(d, 'yyyy-MM-dd'))
     }
   }
@@ -100,6 +101,7 @@ export default function PublicBooking() {
     e.preventDefault()
     if (!form.name.trim() || !selectedSlot) return
     setSubmitting(true)
+    setSubmitError('')
     const { error } = await bookAppointment({
       business_id: business.id,
       subscriber_id: subscriber?.id ?? null,
@@ -110,15 +112,21 @@ export default function PublicBooking() {
       notes: form.notes.trim() || null,
       status: 'pending',
     })
-    if (error) { setSubmitting(false); return }
+    setSubmitting(false)
+    if (error) {
+      const isSlotFull = error.message?.includes('slot_full') || error.code === 'P0001'
+      setSubmitError(isSlotFull
+        ? 'Este horario ya no tiene cupos disponibles. Elegí otro.'
+        : 'Ocurrió un error al reservar. Intentá de nuevo.')
+      return
+    }
     if (shouldCancelExisting && existingBooking && subscriber) {
       await cancelPublicAppointment(existingBooking.id, subscriber.id)
     }
-    setSubmitting(false)
     setStep(STEPS.SUCCESS)
   }
 
-  const availableSlots = availability && selectedDate
+  const availableSlots = availability?.length && selectedDate
     ? getAvailableSlots(availability, format(selectedDate, 'yyyy-MM-dd'), bookedSlots)
     : []
 
@@ -152,7 +160,7 @@ export default function PublicBooking() {
     )
   }
 
-  if (!availability) {
+  if (!availability?.length) {
     return (
       <PublicShell business={business}>
         <AlertCircle size={48} className="text-stone-300 mb-4 mx-auto" />
@@ -422,6 +430,9 @@ export default function PublicBooking() {
                   className="w-full bg-white rounded-2xl px-4 py-3 text-sm border-2 border-transparent focus:border-brand-400 focus:outline-none transition-colors resize-none"
                 />
               </div>
+              {submitError && (
+                <p className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2.5">{submitError}</p>
+              )}
               <Button type="submit" loading={submitting} className="w-full">
                 Confirmar reserva
               </Button>

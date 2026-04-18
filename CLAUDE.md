@@ -8,6 +8,8 @@ Esta guía resume todo lo que un subagente necesita saber para trabajar en este 
 
 Siempre que lo amerite, sumar las implementaciones nuevas a claude.md y readme.md para llevar un control.
 
+Cada vez que haga una nueva implentación debe quedar asentada en una carpeta que se llame doc y el nombre de la nueva implementación en un archivo .md. Dentro del archivo va la fecha y lo realizado.
+
 
 ## Identidad del producto
 
@@ -127,7 +129,7 @@ subsmanager/
     │   │                            usePastPendingAppointments(businessId)
     │   │                            useWeekAppointments(businessId, weekStartStr) ⚠️ weekStart debe ser string 'yyyy-MM-dd', no Date
     │   │                            usePublicAvailability(slug) — también trae business.phone
-    │   │                            getAvailableSlots(availability, dateStr, existing)
+    │   │                            getAvailableSlots(blocks, dateStr, existing) — acepta array o objeto único; soporta slot_capacity > 1
     │   ├── useAvailability.js     → useAvailability(business) — config de agenda + slug
     │   ├── useBusiness.js         → useBusiness(userId) → { business, loading, updateBusiness }
     │   ├── useIsAdmin.js          → useIsAdmin() — llama RPC is_admin(), devuelve boolean
@@ -180,7 +182,7 @@ subsmanager/
 | `usage_logs` | `id`, `subscriber_id`, `business_id`, `used_at`, `notes` |
 | `payments` | `id`, `subscriber_id`, `amount`, `paid_at`, `notes` |
 | `appointments` | `id`, `business_id`, `subscriber_id`, `slot_start`, `slot_end`, `client_name`, `client_dni`, `notes`, `status`, `use_logged`, `cancel_reason` |
-| `business_availability` | `id`, `business_id`, `days_of_week[]`, `start_time`, `end_time`, `slot_duration` |
+| `business_availability` | `id`, `business_id`, `days_of_week[]`, `start_time`, `end_time`, `slot_duration`, `advance_days`, `block_name`, `slot_capacity` — múltiples filas por negocio posibles |
 | `support_messages` | `id`, `business_id`, `message`, `created_at` |
 
 ### RPC Functions (Supabase)
@@ -188,7 +190,7 @@ subsmanager/
 | Función | Descripción |
 |---------|-------------|
 | `is_admin()` | Verifica si el usuario actual es superusuario |
-| `public_get_booked_slots(p_business_id, p_date)` | Slots ocupados para una fecha (sin auth) |
+| `public_get_booked_slots(p_business_id, p_date)` | Una fila por reserva no cancelada (sin auth) — permite contar capacidad por slot |
 | `public_lookup_subscriber(p_business_id, p_dni)` | Busca suscriptor por DNI (sin auth) — devuelve cualquier status, incluido `expired`/`no_uses` |
 | `public_check_existing_booking(p_business_id, p_subscriber_id)` | Turno existente pendiente (sin auth) |
 | `public_cancel_appointment(p_appointment_id, p_subscriber_id)` | Cancela turno (sin auth) |

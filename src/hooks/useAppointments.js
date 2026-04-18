@@ -2,37 +2,45 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { format } from 'date-fns'
 
-export function getAvailableSlots(availability, dateStr, existingAppointments) {
-  if (!availability) return []
-  const { start_time, end_time, slot_duration, days_of_week } = availability
+export function getAvailableSlots(availabilityBlocks, dateStr, existingAppointments) {
+  if (!availabilityBlocks) return []
+  const blocks = Array.isArray(availabilityBlocks) ? availabilityBlocks : [availabilityBlocks]
+  if (!blocks.length) return []
+
   const date = new Date(dateStr + 'T00:00:00')
   const dayOfWeek = date.getDay()
 
-  if (!days_of_week.includes(dayOfWeek)) return []
-
-  const slots = []
-  const [startH, startM] = start_time.split(':').map(Number)
-  const [endH, endM] = end_time.split(':').map(Number)
-
-  let current = new Date(date)
-  current.setHours(startH, startM, 0, 0)
-  const endDate = new Date(date)
-  endDate.setHours(endH, endM, 0, 0)
-
-  const booked = (existingAppointments ?? [])
-    .filter(a => a.status !== 'cancelled')
-    .map(a => new Date(a.slot_start).toISOString())
-
-  while (current < endDate) {
-    const slotStart = new Date(current)
-    const slotEnd = new Date(current.getTime() + slot_duration * 60000)
-    if (!booked.includes(slotStart.toISOString())) {
-      slots.push({ start: slotStart, end: slotEnd })
-    }
-    current = slotEnd
+  // Count non-cancelled bookings per slot_start ISO string
+  const bookedCount = {}
+  for (const a of existingAppointments ?? []) {
+    if (a.status === 'cancelled') continue
+    const key = new Date(a.slot_start).toISOString()
+    bookedCount[key] = (bookedCount[key] || 0) + 1
   }
 
-  return slots
+  const allSlots = []
+  for (const block of blocks) {
+    if (!block.days_of_week?.includes(dayOfWeek)) continue
+    const capacity = block.slot_capacity ?? 1
+    const [startH, startM] = block.start_time.split(':').map(Number)
+    const [endH, endM] = block.end_time.split(':').map(Number)
+
+    let current = new Date(date)
+    current.setHours(startH, startM, 0, 0)
+    const endDate = new Date(date)
+    endDate.setHours(endH, endM, 0, 0)
+
+    while (current < endDate) {
+      const slotStart = new Date(current)
+      const slotEnd = new Date(current.getTime() + block.slot_duration * 60000)
+      if ((bookedCount[slotStart.toISOString()] ?? 0) < capacity) {
+        allSlots.push({ start: slotStart, end: slotEnd })
+      }
+      current = slotEnd
+    }
+  }
+
+  return allSlots.sort((a, b) => a.start - b.start)
 }
 
 export function useAppointments(businessId, date) {
@@ -233,7 +241,7 @@ export function useWeekAppointments(businessId, weekStart) {
 // Hook for public booking page (no auth)
 export function usePublicAvailability(slug) {
   const [business, setBusiness] = useState(null)
-  const [availability, setAvailability] = useState(null)
+  const [availability, setAvailability] = useState([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
@@ -252,8 +260,8 @@ export function usePublicAvailability(slug) {
         .from('business_availability')
         .select('*')
         .eq('business_id', biz.id)
-        .maybeSingle()
-      setAvailability(avail)
+        .order('id')
+      setAvailability(avail ?? [])
       setLoading(false)
     }
     load()

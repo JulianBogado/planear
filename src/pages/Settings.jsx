@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Pencil, Check, Camera, Globe, Music2, Phone, MapPin, ChevronRight, CalendarDays, Copy, CheckCheck } from 'lucide-react'
+import { Pencil, Check, Camera, Globe, Music2, Phone, MapPin, ChevronRight, CalendarDays, Copy, CheckCheck, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useOutletContext } from 'react-router-dom'
 import { useTheme, THEMES, PALETTE_META } from '../context/ThemeContext'
@@ -28,13 +28,12 @@ export default function Settings() {
   const { availability, saveAvailability, ensureSlug } = useAvailability(business)
 
   const DAYS_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-  const SLOT_OPTIONS = [20, 40, 60]
+  const SLOT_OPTIONS = [20, 40, 60, 120, 240]
+  const CAPACITY_OPTIONS = [1, 2, 3, 5, 10]
+  const DEFAULT_BLOCK = { block_name: '', days_of_week: [1, 2, 3, 4, 5], start_time: '09:00', end_time: '18:00', slot_duration: 60, slot_capacity: 1 }
 
   const [agendaEnabled, setAgendaEnabled] = useState(true)
-  const [agendaDays, setAgendaDays] = useState([1, 2, 3, 4, 5])
-  const [agendaStart, setAgendaStart] = useState('09:00')
-  const [agendaEnd, setAgendaEnd] = useState('18:00')
-  const [agendaSlot, setAgendaSlot] = useState(60)
+  const [agendaBlocks, setAgendaBlocks] = useState([{ ...DEFAULT_BLOCK }])
   const [agendaAdvance, setAgendaAdvance] = useState(7)
   const [savingAgenda, setSavingAgenda] = useState(false)
   const [slug, setSlug] = useState(null)
@@ -78,12 +77,16 @@ export default function Settings() {
   }, [business])
 
   useEffect(() => {
-    if (availability) {
-      setAgendaDays(availability.days_of_week ?? [1, 2, 3, 4, 5])
-      setAgendaStart(availability.start_time?.slice(0, 5) ?? '09:00')
-      setAgendaEnd(availability.end_time?.slice(0, 5) ?? '18:00')
-      setAgendaSlot(availability.slot_duration ?? 60)
-      setAgendaAdvance(availability.advance_days ?? 7)
+    if (availability?.length) {
+      setAgendaBlocks(availability.map(b => ({
+        block_name: b.block_name ?? '',
+        days_of_week: b.days_of_week ?? [1, 2, 3, 4, 5],
+        start_time: b.start_time?.slice(0, 5) ?? '09:00',
+        end_time: b.end_time?.slice(0, 5) ?? '18:00',
+        slot_duration: b.slot_duration ?? 60,
+        slot_capacity: b.slot_capacity ?? 1,
+      })))
+      setAgendaAdvance(availability[0].advance_days ?? 7)
     }
   }, [availability])
 
@@ -143,13 +146,7 @@ export default function Settings() {
       currentSlug = await ensureSlug()
       setSlug(currentSlug)
     }
-    await saveAvailability({
-      days_of_week: agendaDays,
-      start_time: agendaStart,
-      end_time: agendaEnd,
-      slot_duration: agendaSlot,
-      advance_days: agendaAdvance,
-    })
+    await saveAvailability(agendaBlocks.map(b => ({ ...b, advance_days: agendaAdvance })))
     setSavingAgenda(false)
     showToast('Configuración de agenda guardada')
   }
@@ -484,71 +481,135 @@ export default function Settings() {
           </div>
 
           <form onSubmit={handleSaveAgenda} className="space-y-4">
-            {/* Días disponibles */}
-            <div>
-              <p className="text-xs font-semibold text-stone-500 mb-2">Días disponibles</p>
-              <div className="flex gap-1.5 flex-wrap">
-                {DAYS_LABELS.map((label, idx) => (
+            {/* Franjas horarias */}
+            {agendaBlocks.map((block, idx) => (
+              <div key={idx} className="bg-surface-tint rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-stone-500 uppercase tracking-widest">
+                    Franja {agendaBlocks.length > 1 ? idx + 1 : ''}
+                  </p>
                   <button
-                    key={idx}
                     type="button"
-                    onClick={() => setAgendaDays(prev =>
-                      prev.includes(idx) ? prev.filter(d => d !== idx) : [...prev, idx].sort()
-                    )}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border-2 ${
-                      agendaDays.includes(idx)
-                        ? 'bg-brand-50 border-brand-400 text-brand-700'
-                        : 'border-transparent bg-surface-tint text-stone-500 hover:border-stone-200'
-                    }`}
+                    onClick={() => setAgendaBlocks(prev => prev.filter((_, i) => i !== idx))}
+                    disabled={agendaBlocks.length === 1}
+                    className="w-7 h-7 flex items-center justify-center rounded-full text-stone-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    {label}
+                    <Trash2 size={13} />
                   </button>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Horario */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs font-semibold text-stone-500 mb-1.5">Desde</p>
-                <input
-                  type="time"
-                  value={agendaStart}
-                  onChange={e => setAgendaStart(e.target.value)}
-                  className="w-full bg-surface-tint rounded-2xl px-3 py-2.5 text-sm text-stone-800 border-0 focus:outline-none focus:ring-2 focus:ring-brand-400"
-                />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-stone-500 mb-1.5">Hasta</p>
-                <input
-                  type="time"
-                  value={agendaEnd}
-                  onChange={e => setAgendaEnd(e.target.value)}
-                  className="w-full bg-surface-tint rounded-2xl px-3 py-2.5 text-sm text-stone-800 border-0 focus:outline-none focus:ring-2 focus:ring-brand-400"
-                />
-              </div>
-            </div>
+                {/* Nombre opcional */}
+                <div>
+                  <p className="text-xs font-semibold text-stone-500 mb-1.5">Nombre (opcional)</p>
+                  <input
+                    type="text"
+                    value={block.block_name}
+                    onChange={e => setAgendaBlocks(prev => prev.map((b, i) => i === idx ? { ...b, block_name: e.target.value } : b))}
+                    placeholder="Ej: Mañana, Tarde…"
+                    className="w-full bg-surface rounded-xl px-3 py-2 text-sm text-stone-800 border-0 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  />
+                </div>
 
-            {/* Duración del slot */}
-            <div>
-              <p className="text-xs font-semibold text-stone-500 mb-2">Duración del turno</p>
-              <div className="flex gap-2">
-                {SLOT_OPTIONS.map(min => (
-                  <button
-                    key={min}
-                    type="button"
-                    onClick={() => setAgendaSlot(min)}
-                    className={`flex-1 py-2 rounded-2xl text-sm font-semibold transition-all border-2 ${
-                      agendaSlot === min
-                        ? 'bg-brand-50 border-brand-400 text-brand-700'
-                        : 'border-transparent bg-surface-tint text-stone-500 hover:border-stone-200'
-                    }`}
-                  >
-                    {min} min
-                  </button>
-                ))}
+                {/* Días disponibles */}
+                <div>
+                  <p className="text-xs font-semibold text-stone-500 mb-2">Días disponibles</p>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {DAYS_LABELS.map((label, dayIdx) => (
+                      <button
+                        key={dayIdx}
+                        type="button"
+                        onClick={() => setAgendaBlocks(prev => prev.map((b, i) => i === idx ? {
+                          ...b,
+                          days_of_week: b.days_of_week.includes(dayIdx)
+                            ? b.days_of_week.filter(d => d !== dayIdx)
+                            : [...b.days_of_week, dayIdx].sort()
+                        } : b))}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border-2 ${
+                          block.days_of_week.includes(dayIdx)
+                            ? 'bg-brand-50 border-brand-400 text-brand-700'
+                            : 'border-transparent bg-surface text-stone-500 hover:border-stone-200'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Horario */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-stone-500 mb-1.5">Desde</p>
+                    <input
+                      type="time"
+                      value={block.start_time}
+                      onChange={e => setAgendaBlocks(prev => prev.map((b, i) => i === idx ? { ...b, start_time: e.target.value } : b))}
+                      className="w-full bg-surface rounded-xl px-3 py-2.5 text-sm text-stone-800 border-0 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-stone-500 mb-1.5">Hasta</p>
+                    <input
+                      type="time"
+                      value={block.end_time}
+                      onChange={e => setAgendaBlocks(prev => prev.map((b, i) => i === idx ? { ...b, end_time: e.target.value } : b))}
+                      className="w-full bg-surface rounded-xl px-3 py-2.5 text-sm text-stone-800 border-0 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Duración del turno */}
+                <div>
+                  <p className="text-xs font-semibold text-stone-500 mb-2">Duración del turno</p>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {SLOT_OPTIONS.map(min => (
+                      <button
+                        key={min}
+                        type="button"
+                        onClick={() => setAgendaBlocks(prev => prev.map((b, i) => i === idx ? { ...b, slot_duration: min } : b))}
+                        className={`flex-1 min-w-0 py-2 rounded-xl text-xs font-semibold transition-all border-2 ${
+                          block.slot_duration === min
+                            ? 'bg-brand-50 border-brand-400 text-brand-700'
+                            : 'border-transparent bg-surface text-stone-500 hover:border-stone-200'
+                        }`}
+                      >
+                        {min >= 60 ? `${min / 60}h` : `${min}m`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Capacidad por turno */}
+                <div>
+                  <p className="text-xs font-semibold text-stone-500 mb-2">Capacidad por turno</p>
+                  <div className="flex gap-1.5">
+                    {CAPACITY_OPTIONS.map(cap => (
+                      <button
+                        key={cap}
+                        type="button"
+                        onClick={() => setAgendaBlocks(prev => prev.map((b, i) => i === idx ? { ...b, slot_capacity: cap } : b))}
+                        className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all border-2 ${
+                          block.slot_capacity === cap
+                            ? 'bg-brand-50 border-brand-400 text-brand-700'
+                            : 'border-transparent bg-surface text-stone-500 hover:border-stone-200'
+                        }`}
+                      >
+                        {cap}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            ))}
+
+            {/* Agregar franja */}
+            <button
+              type="button"
+              onClick={() => setAgendaBlocks(prev => [...prev, { ...DEFAULT_BLOCK }])}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border-2 border-dashed border-stone-200 text-sm font-semibold text-stone-400 hover:border-brand-300 hover:text-brand-600 transition-colors"
+            >
+              <Plus size={14} /> Agregar franja horaria
+            </button>
 
             {/* Anticipación */}
             <div>

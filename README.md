@@ -154,9 +154,10 @@ appointments (id, business_id, subscriber_id, slot_start, slot_end,
               use_logged, cancel_reason)
 -- appointments.status: 'pending' | 'confirmed' | 'cancelled'
 
--- Configuración horaria de la agenda
+-- Configuración horaria de la agenda (múltiples filas por negocio)
 business_availability (id, business_id, days_of_week,
-                       start_time, end_time, slot_duration)
+                       start_time, end_time, slot_duration, advance_days,
+                       block_name, slot_capacity)
 
 -- Mensajes de soporte
 support_messages (id, business_id, message, created_at)
@@ -169,6 +170,10 @@ Si la columna `cancel_reason` no existe aún en `appointments`:
 ```sql
 ALTER TABLE appointments ADD COLUMN cancel_reason text;
 ```
+
+### Agenda multi-bloque y capacidad
+
+`business_availability` admite múltiples filas por negocio (se eliminó la constraint UNIQUE). Cada fila es una franja horaria independiente con `block_name` y `slot_capacity`. Ver `doc/mejorasAgenda.md` para detalle completo.
 
 ### Seguridad de tiers
 

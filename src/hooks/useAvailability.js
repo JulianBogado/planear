@@ -13,7 +13,7 @@ function generateSlug(name) {
 }
 
 export function useAvailability(business) {
-  const [availability, setAvailability] = useState(null)
+  const [availability, setAvailability] = useState([])
   const [loading, setLoading] = useState(true)
 
   const fetchAvailability = useCallback(async () => {
@@ -23,21 +23,22 @@ export function useAvailability(business) {
       .from('business_availability')
       .select('*')
       .eq('business_id', business.id)
-      .maybeSingle()
-    setAvailability(data)
+      .order('id')
+    setAvailability(data ?? [])
     setLoading(false)
   }, [business?.id])
 
   useEffect(() => { fetchAvailability() }, [fetchAvailability])
 
-  async function saveAvailability(payload) {
+  async function saveAvailability(blocks) {
     if (!business?.id) return { error: 'No business' }
+    await supabase.from('business_availability').delete().eq('business_id', business.id)
+    const rows = blocks.map(b => ({ ...b, business_id: business.id }))
     const { data, error } = await supabase
       .from('business_availability')
-      .upsert({ ...payload, business_id: business.id }, { onConflict: 'business_id' })
+      .insert(rows)
       .select()
-      .single()
-    if (!error) setAvailability(data)
+    if (!error) setAvailability(data ?? [])
     return { data, error }
   }
 
