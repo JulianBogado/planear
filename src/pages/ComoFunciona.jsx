@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ClipboardList, Users, Zap, RefreshCw, CalendarDays, CheckCircle2, Wine, Leaf, Dumbbell, Sparkles, Scissors } from 'lucide-react'
 import PublicNavbar from '../components/layout/PublicNavbar'
@@ -39,15 +40,99 @@ const STEPS = [
     title: 'Registrá cada visita',
     desc: 'Cuando el cliente llega, buscalo en la app y tocá "Registrar uso". Se descuenta un uso del conteo y queda guardado con fecha y hora.',
     details: [
-      'Un tap desde el celular, sin pasos extra',
+      'Un click, desde cualquier lugar, sin pasos extra',
       'Historial completo de usos por cliente',
-      'Alerta automática cuando los usos se agotan',
-      'Podés agregar una nota a cada uso registrado',
+      'Alerta automática cuando las suscripciones se quedan sin usos',
+      'Registro de notas para cada tipo de usos',
     ],
     color: '#2785aa',
     bg: '#f0f7fb',
   },
 ]
+
+function RenovacionMockup() {
+  const [phase, setPhase] = useState('idle') // 'idle' | 'loading' | 'done'
+
+  const newExpiry = new Date()
+  newExpiry.setDate(newExpiry.getDate() + 30)
+  const expiryStr = newExpiry.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+  function handleClick() {
+    setPhase('loading')
+    setTimeout(() => setPhase('done'), 750)
+  }
+
+  const done = phase === 'done'
+
+  return (
+    <div className="bg-white rounded-3xl shadow-xl border border-stone-100 w-full max-w-xs" style={{ height: '344px', position: 'relative', overflow: 'hidden' }}>
+      {/* ── Idle / Loading ── */}
+      <div
+        className="absolute inset-0 p-6 flex flex-col transition-all duration-500"
+        style={{ opacity: done ? 0 : 1, transform: done ? 'scale(0.95)' : 'scale(1)', pointerEvents: done ? 'none' : 'auto' }}
+      >
+        <p className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-4">Renovar suscripción</p>
+        <div className="space-y-3 mb-5">
+          <div className="bg-stone-50 rounded-2xl p-3">
+            <p className="text-xs text-stone-400">Cliente</p>
+            <p className="font-semibold text-stone-800 text-sm">Carlos López</p>
+          </div>
+          <div className="bg-stone-50 rounded-2xl p-3">
+            <p className="text-xs text-stone-400">Plan</p>
+            <p className="font-semibold text-stone-800 text-sm">Plan mensual 4 cortes — $40.500</p>
+          </div>
+          <div className="bg-stone-50 rounded-2xl p-3">
+            <p className="text-xs text-stone-400">Monto cobrado</p>
+            <p className="font-semibold text-stone-800 text-sm">$40.500</p>
+          </div>
+        </div>
+        <button
+          onClick={handleClick}
+          disabled={phase === 'loading'}
+          className="w-full py-3 rounded-full text-sm font-bold text-white flex items-center justify-center gap-2 transition-all mt-auto"
+          style={{ backgroundColor: '#2785aa', opacity: phase === 'loading' ? 0.85 : 1 }}
+        >
+          {phase === 'loading' ? (
+            <><RefreshCw size={14} className="animate-spin" /> Renovando...</>
+          ) : 'Confirmar renovación'}
+        </button>
+      </div>
+
+      {/* ── Success ── */}
+      <div
+        className="absolute inset-0 p-6 flex flex-col items-center justify-center text-center gap-4 transition-all duration-500"
+        style={{ opacity: done ? 1 : 0, transform: done ? 'scale(1)' : 'scale(0.95)', pointerEvents: done ? 'auto' : 'none' }}
+      >
+        <div className="relative w-16 h-16">
+          <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-25 animate-ping" />
+          <div className="relative w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center">
+            <CheckCircle2 size={32} className="text-emerald-500" />
+          </div>
+        </div>
+        <div>
+          <p className="font-extrabold text-stone-900 text-xl">¡Renovado!</p>
+          <p className="text-sm text-stone-400 mt-0.5">Carlos López</p>
+        </div>
+        <div className="w-full space-y-2">
+          <div className="flex items-center justify-between bg-emerald-50 rounded-2xl px-4 py-2.5">
+            <span className="text-xs text-stone-500">Usos disponibles</span>
+            <span className="text-sm font-bold text-emerald-700">4 de 4</span>
+          </div>
+          <div className="flex items-center justify-between bg-stone-50 rounded-2xl px-4 py-2.5">
+            <span className="text-xs text-stone-500">Nuevo vencimiento</span>
+            <span className="text-sm font-bold text-stone-700">{expiryStr}</span>
+          </div>
+        </div>
+        <button
+          onClick={() => setPhase('idle')}
+          className="text-xs text-stone-400 hover:text-stone-500 transition-colors underline underline-offset-2"
+        >
+          Reiniciar demo
+        </button>
+      </div>
+    </div>
+  )
+}
 
 const STATUS_BADGES = [
   { label: 'Activa', desc: 'El cliente tiene usos disponibles y está dentro de la fecha de vigencia.', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-400' },
@@ -146,7 +231,7 @@ export default function ComoFunciona() {
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 mx-auto md:mx-0" style={{ backgroundColor: '#e8f4f8' }}>
               <RefreshCw size={26} style={{ color: '#2785aa' }} />
             </div>
-            <h2 className="font-extrabold text-3xl sm:text-4xl text-stone-900 mb-4">Renovar es un click</h2>
+            <h2 className="font-extrabold text-3xl sm:text-4xl text-stone-900 mb-4">Renová los planes en un toque</h2>
             <p className="text-stone-500 leading-relaxed mb-5">
               Cuando una suscripción vence o se queda sin usos, podés "Renovar" desde la ficha del cliente. La app automáticamente extiende la fecha de vencimiento según la duración del plan, y resetea los usos disponibles. Si el cliente quiere cambiar de plan, solo tenés que asignarle uno nuevo.
             </p>
@@ -154,26 +239,7 @@ export default function ComoFunciona() {
           </div>
           {/* Mockup renovación */}
           <div className="flex-1 flex justify-center">
-            <div className="bg-white rounded-3xl shadow-xl border border-stone-100 p-6 w-full max-w-xs">
-              <p className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-4">Renovar suscripción</p>
-              <div className="space-y-3 mb-5">
-                <div className="bg-stone-50 rounded-2xl p-3">
-                  <p className="text-xs text-stone-400">Cliente</p>
-                  <p className="font-semibold text-stone-800 text-sm">Carlos López</p>
-                </div>
-                <div className="bg-stone-50 rounded-2xl p-3">
-                  <p className="text-xs text-stone-400">Plan</p>
-                  <p className="font-semibold text-stone-800 text-sm">Plan mensual 4 cortes — $4.500</p>
-                </div>
-                <div className="bg-stone-50 rounded-2xl p-3">
-                  <p className="text-xs text-stone-400">Monto cobrado</p>
-                  <p className="font-semibold text-stone-800 text-sm">$4.500</p>
-                </div>
-              </div>
-              <button className="w-full py-3 rounded-full text-sm font-bold text-white" style={{ backgroundColor: '#2785aa' }}>
-                Confirmar renovación
-              </button>
-            </div>
+            <RenovacionMockup />
           </div>
         </div>
       </section>
@@ -191,12 +257,12 @@ export default function ComoFunciona() {
             ¿Querés administrar tu agenda?
           </h2>
           <p className="text-stone-500 leading-relaxed mb-6 max-w-xl mx-auto">
-            Activala desde la configuración, definí tu disponibilidad (días, horarios, duración de cada turno) y compartí tu URL pública. Tus clientes ingresan a tu URL pública, eligen día, horario y listo.
+            Activala la opción, definí tu disponibilidad (días, horarios, duración de cada turno) y compartí tu URL pública. Tus clientes ingresan a tu URL pública, eligen día, horario y listo.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 text-left max-w-2xl mx-auto">
             {[
               { title: 'Ofrecé un servicio diferencial', desc: 'Tus clientes pueden reservar su turno desde su celular.' },
-              { title: 'Disponibilidad automática', desc: 'La PLANE.AR sincroniza tu disponibilidad en tiempo real.' },
+              { title: 'Disponibilidad automática', desc: 'PLANE.AR sincroniza tu disponibilidad en tiempo real.' },
               { title: 'Llevá el control', desc: 'Mantené un registro detallado de tus clientes.' },
             ].map(({ title, desc }) => (
               <div key={title} className="bg-white rounded-2xl p-4 border border-stone-100">

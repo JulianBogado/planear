@@ -4,6 +4,11 @@ Esta guía resume todo lo que un subagente necesita saber para trabajar en este 
 
 ---
 
+## Implementaciones nuevas
+
+Siempre que lo amerite, sumar las implementaciones nuevas a claude.md y readme.md para llevar un control.
+
+
 ## Identidad del producto
 
 - **Nombre comercial:** PLANE.AR (anteriormente SubsManager)
@@ -169,7 +174,7 @@ subsmanager/
 
 | Tabla | Campos clave |
 |-------|-------------|
-| `businesses` | `id`, `user_id`, `name`, `category`, `tier`, `theme`, `slug`, `phone`, `instagram`, `facebook`, `tiktok`, `address`, `agenda_enabled` |
+| `businesses` | `id`, `user_id`, `name`, `category`, `tier`, `theme`, `slug`, `phone`, `instagram`, `facebook`, `tiktok`, `address`, `agenda_enabled`, `mp_subscription_id`, `mp_status`, `subscription_ends_at` |
 | `plans` | `id`, `business_id`, `name`, `description`, `price`, `total_uses`, `duration_days`, `is_template`, `items` (text[]) |
 | `subscribers` | `id`, `business_id`, `plan_id`, `name`, `phone`, `dni`, `notes`, `start_date`, `end_date`, `uses_remaining`, `status` |
 | `usage_logs` | `id`, `subscriber_id`, `business_id`, `used_at`, `notes` |
@@ -184,7 +189,7 @@ subsmanager/
 |---------|-------------|
 | `is_admin()` | Verifica si el usuario actual es superusuario |
 | `public_get_booked_slots(p_business_id, p_date)` | Slots ocupados para una fecha (sin auth) |
-| `public_lookup_subscriber(p_business_id, p_dni)` | Busca suscriptor por DNI (sin auth) |
+| `public_lookup_subscriber(p_business_id, p_dni)` | Busca suscriptor por DNI (sin auth) — devuelve cualquier status, incluido `expired`/`no_uses` |
 | `public_check_existing_booking(p_business_id, p_subscriber_id)` | Turno existente pendiente (sin auth) |
 | `public_cancel_appointment(p_appointment_id, p_subscriber_id)` | Cancela turno (sin auth) |
 | `public_book_appointment(...)` | Crea turno (sin auth) |
@@ -254,6 +259,42 @@ El campo `businesses.tier` controla las features disponibles:
 
 Usar `useSubscription(business)` para chequear permisos en componentes.
 
+### Seguridad de tiers (RLS enforcement)
+
+Los límites de tier se aplican en dos capas: frontend (`useSubscription`) + DB (políticas RESTRICTIVE).
+
+**Funciones auxiliares (SECURITY DEFINER):**
+
+| Función | Descripción |
+|---------|-------------|
+| `get_effective_tier(business_id)` | Devuelve el tier real considerando `subscription_ends_at` (si venció → 'free') |
+| `can_add_subscriber(business_id)` | `true` si el negocio puede agregar un suscriptor más según su tier |
+| `can_add_plan(business_id)` | `true` si el negocio puede agregar un plan más según su tier |
+| `_tier_fields_unchanged(id, tier, ends_at, mp_sub_id, mp_status)` | Helper para la policy de UPDATE en businesses |
+
+**Políticas RESTRICTIVE:**
+
+| Tabla | Política | Qué bloquea |
+|-------|----------|-------------|
+| `businesses` | `businesses_protect_tier_fields` | UPDATE de `tier`, `subscription_ends_at`, `mp_subscription_id`, `mp_status` por usuarios no-admin |
+| `subscribers` | `subscribers_insert_tier_limit` | INSERT cuando se supera el límite del tier |
+| `plans` | `plans_insert_tier_limit` | INSERT cuando se supera el límite del tier |
+
+> `service_role` (edge functions) tiene BYPASSRLS y no es afectado. El superusuario (`is_admin()`) puede modificar el tier desde Settings.
+
+---
+
+## Integración Mercado Pago
+
+Edge functions en `supabase/functions/`:
+
+| Función | Descripción |
+|---------|-------------|
+| `create-subscription` | Crea un preapproval en MP para el tier elegido. Requiere JWT. Devuelve `init_point`. |
+| `mp-webhook` | Recibe eventos de MP (`subscription_preapproval`), actualiza `tier` y `subscription_ends_at` en `businesses`. |
+
+El tier se transmite via `external_reference` en el preapproval. El webhook usa `service_role` para actualizar campos protegidos por RLS.
+
 ---
 
 ## Convenciones
@@ -270,7 +311,6 @@ Usar `useSubscription(business)` para chequear permisos en componentes.
 
 ## Lo que NO está implementado aún (V2+)
 
-- Pagos automáticos / integración Mercado Pago
 - WhatsApp / emails automáticos
 - Selección de ítems/combos en turnos (`appointment_items` — schema diseñado, no implementado)
 - App móvil nativa

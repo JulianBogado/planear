@@ -48,7 +48,7 @@ export default function Login() {
             <h1 className="font-extrabold text-4xl text-white tracking-tight">PLANE.AR</h1>
           </div>
           <p className="text-white/70 text-lg font-medium leading-relaxed">
-            La herramienta para negocios boutique que cuidan a sus clientes.
+            La herramienta que te ayuda a gestionar tus suscripciones.
           </p>
         </div>
 

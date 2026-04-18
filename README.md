@@ -131,7 +131,8 @@ src/
 ```sql
 -- Negocio del usuario
 businesses (id, user_id, name, category, tier, theme, slug,
-            phone, instagram, facebook, tiktok, address, agenda_enabled)
+            phone, instagram, facebook, tiktok, address, agenda_enabled,
+            mp_subscription_id, mp_status, subscription_ends_at)
 
 -- Planes/paquetes que ofrece el negocio
 plans (id, business_id, name, description, price,
@@ -168,6 +169,10 @@ Si la columna `cancel_reason` no existe aún en `appointments`:
 ```sql
 ALTER TABLE appointments ADD COLUMN cancel_reason text;
 ```
+
+### Seguridad de tiers
+
+Aplicada como migración en Supabase. Crea funciones `get_effective_tier`, `can_add_subscriber`, `can_add_plan`, `_tier_fields_unchanged` y políticas RESTRICTIVE en `businesses`, `subscribers` y `plans`. Ver CLAUDE.md para detalle completo.
 
 ---
 

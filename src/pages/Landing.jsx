@@ -133,7 +133,7 @@ export default function Landing() {
               className="inline-block text-xs font-bold px-4 py-1.5 rounded-full mb-6"
               style={{ backgroundColor: 'rgba(192,161,195,0.2)', color: '#006d67' }}
             >
-              Gestión de membresías para negocios boutique
+              Gestión de suscripciones para negocios
             </span>
             <h1 className="font-extrabold text-4xl sm:text-5xl lg:text-6xl text-stone-900 leading-tight mb-5">
               Tu cuaderno<br />de clientes,{' '}
@@ -261,7 +261,7 @@ export default function Landing() {
               <span className="font-extrabold text-xl tracking-tight text-white">PLANE.AR</span>
             </div>
             <p className="text-white/60 text-sm leading-relaxed">
-              La herramienta para negocios boutique que cuidan a sus clientes.
+              La herramienta que te ayuda a gestionar tus suscripciones.
             </p>
           </div>
 

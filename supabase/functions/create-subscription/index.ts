@@ -3,8 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const MP_API = 'https://api.mercadopago.com'
 
 const TIER_PRICES: Record<string, { amount: number; label: string }> = {
-  starter: { amount: 3500, label: 'SubsManager Starter' },
-  pro:     { amount: 5000, label: 'SubsManager Pro' },
+  starter: { amount: 25000, label: 'PLANE.AR Starter' },
+  pro:     { amount: 30000, label: 'PLANE.AR Pro' },
 }
 
 Deno.serve(async (req) => {
@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         reason: tierInfo.label,
+        external_reference: tier,
         payer_email: user.email,
         back_url: `${siteUrl}/configuracion`,
         auto_recurring: {

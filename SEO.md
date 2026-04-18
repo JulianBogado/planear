@@ -26,6 +26,7 @@ Referencia de copy, keywords y metadata para todas las páginas públicas del si
 
 ### Short-tail
 - gestión de membresías
+- gestión de suscripciones
 - suscripciones para negocios
 - administrar clientes
 - agenda online para negocios
@@ -33,6 +34,7 @@ Referencia de copy, keywords y metadata para todas las páginas públicas del si
 
 ### Long-tail (mayor intención de conversión)
 - gestión de membresías para peluquerías
+- gestión de suscripciones para peluquerías
 - sistema de suscripciones para entrenadores personales
 - administrar clientes de yoga con membresía
 - app para gestionar abonos de barbería
@@ -54,7 +56,7 @@ Referencia de copy, keywords y metadata para todas las páginas públicas del si
 ### Inicio (`/`)
 
 **Title tag:**  
-`PLANE.AR — Gestión de membresías para pequeños negocios`
+`PLANE.AR — Gestión de suscripciones para pequeños negocios`
 
 **Meta description:**  
 `Administrá las membresías de tu negocio desde el celular. Controlá pagos, usos y vencimientos de cada cliente. Empezá gratis, sin tarjeta de crédito.`
@@ -62,7 +64,7 @@ Referencia de copy, keywords y metadata para todas las páginas públicas del si
 **H1:**  
 `Tu cuaderno de clientes, sin papel.`
 
-**Keywords foco:** gestión de membresías, administrar clientes, suscripciones negocios, barbería, estética, entrenadores
+**Keywords foco:** gestión de suscripciones, administrar clientes, suscripciones negocios, barbería, estética, entrenadores
 
 ---
 

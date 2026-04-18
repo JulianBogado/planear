@@ -46,9 +46,13 @@ Deno.serve(async (req) => {
 
     const preapproval = await preapprovalRes.json()
 
-    // 2. Determinar tier desde preapproval_plan_id
+    // 2. Determinar tier: primero external_reference, fallback a preapproval_plan_id
     const planMap = buildPlanMap()
-    const tier = planMap[preapproval.preapproval_plan_id] ?? null
+    const extRef = preapproval.external_reference
+    const tier: string | null =
+      extRef === 'starter' || extRef === 'pro'
+        ? extRef
+        : planMap[preapproval.preapproval_plan_id] ?? null
 
     // 3. Determinar nuevo estado
     // MP status: authorized | paused | cancelled | pending

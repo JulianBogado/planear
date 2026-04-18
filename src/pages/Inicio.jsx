@@ -183,14 +183,14 @@ export default function Inicio() {
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-center gap-14">
           <div className="flex-1 text-center lg:text-left">
             <span className="inline-block text-xs font-bold px-4 py-1.5 rounded-full mb-6" style={{ backgroundColor: 'rgba(192,161,195,0.2)', color: '#2785aa' }}>
-              El gestor de membresías que necesitabas
+              El gestor de suscripciones que necesitabas
             </span>
             <h1 className="font-extrabold text-4xl sm:text-5xl lg:text-6xl text-stone-900 leading-tight mb-5">
               Tu cuaderno<br />de clientes,{' '}
               <span style={{ color: '#2785aa' }}>sin papel.</span>
             </h1>
             <p className="text-lg text-stone-500 font-medium leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
-              ¿Ofrecés membresías en tu negocio? ¿Se te está complicando administrarlas? PLANE.AR tiene todo lo que necesitás para organizar tus clientes, registrar sus pagos y renovaciones, agendar citas y más. Descubrilo
+              ¿Ofrecés membresías, suscripciones o paquetes en tu negocio? ¿Se te está complicando administrarlas? PLANE.AR tiene todo lo que necesitás para organizar tus clientes, registrar sus pagos y renovaciones, agendar citas y más. Descubrilo
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
               <Link to="/register" className="w-full sm:w-auto px-8 py-3.5 rounded-full text-sm font-bold text-white shadow-md transition-all hover:opacity-90" style={{ backgroundColor: '#2785aa' }}>

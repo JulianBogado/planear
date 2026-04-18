@@ -24,7 +24,7 @@ export default function Settings() {
   const { loadTemplates, wipeAndReload } = usePlans(business?.id)
 
   const isSuperuser = useIsAdmin()
-  const { canReserve } = useSubscription(business)
+  const { canReserve, isExpired } = useSubscription(business)
   const { availability, saveAvailability, ensureSlug } = useAvailability(business)
 
   const DAYS_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -398,21 +398,30 @@ export default function Settings() {
           <div className="bg-surface rounded-3xl shadow-card p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-stone-800">Mi suscripción</h2>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-brand-50 text-brand-700">
-                {info.label}
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isExpired ? 'bg-red-50 text-red-600' : 'bg-brand-50 text-brand-700'}`}>
+                {isExpired ? `${info.label} (vencido)` : info.label}
               </span>
             </div>
             <p className="text-sm text-stone-500 mb-4">
               {tier === 'free'
                 ? 'Hasta 5 clientes · 2 planes · Sin cartelería ni estadísticas'
                 : tier === 'starter'
-                ? 'Hasta 50 clientes · Planes ilimitados · Cartelería incluida'
+                ? 'Hasta 50 clientes · Hasta 3 planes · Cartelería incluida'
                 : 'Clientes ilimitados · Todo incluido'}
             </p>
             {tier === 'free' ? (
               <Link to="/precios">
                 <Button size="sm" className="w-full">Mejorar plan</Button>
               </Link>
+            ) : isExpired ? (
+              <div className="space-y-2">
+                <div className="bg-red-50 rounded-2xl px-4 py-2.5 text-sm text-red-700 font-medium">
+                  Tu suscripción venció. Perdiste acceso a las funciones pagas.
+                </div>
+                <Link to="/precios">
+                  <Button size="sm" className="w-full">Renovar suscripción</Button>
+                </Link>
+              </div>
             ) : (
               <div className="space-y-2">
                 {business.subscription_ends_at && (

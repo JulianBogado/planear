@@ -248,7 +248,7 @@ export default function PublicBooking() {
                     : 'tu plan está vencido.'}
                 </p>
                 <p className="text-sm text-stone-400 mt-1">
-                  Para seguir reservando, renovate con el negocio.
+                  Para realizar una reserva, contactate con el negocio.
                 </p>
               </div>
             </div>

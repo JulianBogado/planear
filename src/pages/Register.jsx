@@ -51,7 +51,7 @@ export default function Register() {
             <h1 className="font-extrabold text-4xl text-white tracking-tight">PLANE.AR</h1>
           </div>
           <p className="text-white/70 text-lg font-medium leading-relaxed">
-            Empezá hoy a gestionar tu negocio boutique con claridad y estilo.
+            Empezá hoy a gestionar tu negocio con claridad.
           </p>
         </div>
 
