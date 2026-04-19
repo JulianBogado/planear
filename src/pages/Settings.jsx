@@ -33,6 +33,7 @@ export default function Settings() {
   const DEFAULT_BLOCK = { block_name: '', days_of_week: [1, 2, 3, 4, 5], start_time: '09:00', end_time: '18:00', slot_duration: 60, slot_capacity: 1 }
 
   const [agendaEnabled, setAgendaEnabled] = useState(true)
+  const [allowGuestBookings, setAllowGuestBookings] = useState(false)
   const [agendaBlocks, setAgendaBlocks] = useState([{ ...DEFAULT_BLOCK }])
   const [agendaAdvance, setAgendaAdvance] = useState(7)
   const [savingAgenda, setSavingAgenda] = useState(false)
@@ -72,6 +73,7 @@ export default function Settings() {
       setTiktok(business.tiktok ?? '')
       setSlug(business.slug ?? null)
       setAgendaEnabled(business.agenda_enabled !== false)
+      setAllowGuestBookings(business.allow_guest_bookings === true)
       syncFromBusiness(business)
     }
   }, [business])
@@ -136,6 +138,13 @@ export default function Settings() {
     setAgendaEnabled(next)
     await updateBusiness(business.id, { agenda_enabled: next })
     showToast(next ? 'Reservas online activadas' : 'Reservas online desactivadas')
+  }
+
+  async function handleToggleGuestBookings() {
+    const next = !allowGuestBookings
+    setAllowGuestBookings(next)
+    await updateBusiness(business.id, { allow_guest_bookings: next })
+    showToast(next ? 'Reservas sin suscripción activadas' : 'Reservas sin suscripción desactivadas')
   }
 
   async function handleSaveAgenda(e) {
@@ -458,7 +467,21 @@ export default function Settings() {
           </div>
 
           {agendaEnabled && <>
-          <p className="text-xs text-stone-400 mb-5">Configurá tu disponibilidad para que tus clientes puedan reservar online</p>
+          <p className="text-xs text-stone-400 mb-4">Configurá tu disponibilidad para que tus clientes puedan reservar online</p>
+
+          {/* Toggle guest bookings */}
+          <div className="flex items-center justify-between mb-5 bg-surface-tint rounded-2xl px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-stone-700">Reservas sin suscripción</p>
+              <p className="text-xs text-stone-400">Permitir que personas sin membresía activa reserven turnos</p>
+            </div>
+            <button
+              onClick={handleToggleGuestBookings}
+              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${allowGuestBookings ? 'bg-brand-600' : 'bg-stone-200'}`}
+            >
+              <span className={`block w-5 h-5 bg-white rounded-full shadow transition-transform absolute top-0.5 ${allowGuestBookings ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </button>
+          </div>
 
           {/* URL pública */}
           <div className="bg-surface-tint rounded-2xl px-4 py-3 mb-4">

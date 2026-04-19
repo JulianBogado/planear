@@ -311,8 +311,20 @@ El tier se transmite via `external_reference` en el preapproval. El webhook usa 
 
 ---
 
+## Seguridad de la agenda pública
+
+El campo `businesses.allow_guest_bookings` (boolean, default `false`) controla si personas sin suscripción activa pueden reservar turnos desde `/reservar/:slug`.
+
+- `false` (default): solo suscriptores pueden reservar. El botón "Reservar sin suscripción" no aparece en `PublicBooking`.
+- `true`: cualquier visitante puede reservar como invitado.
+
+El negocio lo controla desde Settings > Agenda y reservas > toggle "Reservas sin suscripción".
+
+---
+
 ## Lo que NO está implementado aún (V2+)
 
 - WhatsApp / emails automáticos
 - Selección de ítems/combos en turnos (`appointment_items` — schema diseñado, no implementado)
 - App móvil nativa
+- Guest mode con verificación SMS OTP (pendiente cuando se reactive `allow_guest_bookings`)

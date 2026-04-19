@@ -80,6 +80,7 @@ export default function PublicBooking() {
   }
 
   function handleContinueAsGuest() {
+    if (!business?.allow_guest_bookings) return
     setGuestMode(true)
     setSubscriber(null)
     setStep(STEPS.DATE)
@@ -223,20 +224,22 @@ export default function PublicBooking() {
                 Verificar DNI
               </Button>
             </form>
-            <div className="relative">
+{/*             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-stone-100" />
               </div>
               <div className="relative flex justify-center">
                 <span className="bg-white px-3 text-xs text-stone-400">o</span>
               </div>
-            </div>
-            <button
-              onClick={handleContinueAsGuest}
-              className="w-full py-2.5 rounded-2xl border-2 border-stone-200 text-sm font-semibold text-stone-600 hover:border-stone-300 transition-colors"
-            >
-              Reservar sin suscripción
-            </button>
+            </div> */}
+            {business?.allow_guest_bookings && (
+              <button
+                onClick={handleContinueAsGuest}
+                className="w-full py-2.5 rounded-2xl border-2 border-stone-200 text-sm font-semibold text-stone-600 hover:border-stone-300 transition-colors"
+              >
+                Reservar sin suscripción
+              </button>
+            )}
           </div>
         )}
 
@@ -275,12 +278,14 @@ export default function PublicBooking() {
                   Contactar al negocio por WhatsApp
                 </a>
               )}
-              <button
-                onClick={handleContinueAsGuest}
-                className="w-full py-2.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-sm font-semibold text-stone-700 transition-colors"
-              >
-                Reservar sin suscripción
-              </button>
+              {business?.allow_guest_bookings && (
+                <button
+                  onClick={handleContinueAsGuest}
+                  className="w-full py-2.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-sm font-semibold text-stone-700 transition-colors"
+                >
+                  Reservar sin suscripción
+                </button>
+              )}
               <button
                 onClick={() => { setExpiredSubscriber(null); setDniInput(''); setDniError(''); setStep(STEPS.DNI) }}
                 className="w-full py-2.5 text-sm text-stone-400 hover:text-stone-600 transition-colors"
