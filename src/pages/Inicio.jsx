@@ -161,8 +161,8 @@ const RUBROS = [
 // ─── Testimoniales ───────────────────────────────────────────────────────────
 const TESTIMONIALS = [
   { initial: 'M', name: 'Lauti Mendez', role: 'Barbería, Rosario', quote: 'Antes tenía todo en papel, un lío. Los chicos de Plane.ar me vinieron con una solución práctica. El equipo lo considera escencial para organizar el día a día.', color: '#2785aa' },
-  { initial: 'P', name: 'Pato Villarino', role: 'Vivero, Wilde', quote: 'La agenda es lo que más uso. Me viene como anillo al dedo para predecir el stock y saber que tengo que comprar cada mes.', color: '#007a8e' },
-  { initial: 'R', name: 'Ricardo Muñiz', role: 'Vinoteca, Quiles', quote: 'La gente elige su paquete de vinos, me dice cuando lo pasa a buscar, lo armo y listo. Todo muy aceitado.', color: '#C0A1C3' },
+  { initial: 'P', name: 'Pato Villarino', role: 'Vivero, Wilde', quote: 'La agenda es lo que más uso. Me sirve para predecir el stock y saber que tengo que comprar cada mes.', color: '#007a8e' },
+  { initial: 'R', name: 'Ricky Muñiz', role: 'Vinoteca, Quilmes', quote: 'La gente elige su paquete de vinos a través de un link, Plane.ar me dice cuando lo pasan a buscar, lo armo y listo. Todo muy aceitado.', color: '#C0A1C3' },
 ]
 
 // ─── Main ────────────────────────────────────────────────────────────────────

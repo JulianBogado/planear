@@ -5,12 +5,15 @@ import { useAuth } from '../context/AuthContext'
 import { CATEGORIES, TEMPLATES } from '../constants/templates'
 
 export default function Onboarding() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
   const [businessName, setBusinessName] = useState('')
   const [category, setCategory] = useState('')
   const [selectedTemplates, setSelectedTemplates] = useState([])
+  const [phone, setPhone] = useState('')
+  const [address, setAddress] = useState('')
+  const [instagram, setInstagram] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -26,7 +29,14 @@ export default function Onboarding() {
   async function handleFinish() {
     setError(''); setLoading(true)
     const { data: business, error: bizError } = await supabase
-      .from('businesses').insert({ user_id: user.id, name: businessName.trim(), category }).select().single()
+      .from('businesses').insert({
+        user_id: user.id,
+        name: businessName.trim(),
+        category,
+        phone: phone.trim() || null,
+        address: address.trim() || null,
+        instagram: instagram.trim() || null,
+      }).select().single()
     if (bizError) { setError('Hubo un error al guardar. Intentá de nuevo.'); setLoading(false); return }
     const templates = TEMPLATES[category] ?? []
     const plansToInsert = selectedTemplates.map(idx => templates[idx]).filter(Boolean).map(t => ({ ...t, business_id: business.id, is_template: true }))
@@ -35,10 +45,18 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12" style={{ backgroundColor: 'var(--bg)' }}>
+    <div data-theme="celeste" className="min-h-screen flex flex-col items-center justify-center px-4 py-12" style={{ backgroundColor: 'var(--bg)' }}>
 
-      {/* Brand */}
-      <p className="font-extrabold text-2xl text-brand-600 mb-8 tracking-tight">SubsManager</p>
+      {/* Brand + sign out */}
+      <div className="flex items-center justify-between w-full max-w-md mb-8">
+        <p className="font-extrabold text-2xl text-brand-600 tracking-tight">PLANE.AR</p>
+        <button
+          onClick={signOut}
+          className="text-xs text-stone-400 hover:text-red-500 transition-colors font-medium"
+        >
+          Cerrar sesión
+        </button>
+      </div>
 
       <div className="w-full max-w-md">
 
@@ -64,6 +82,30 @@ export default function Onboarding() {
               autoFocus
               className="w-full text-center text-xl font-semibold bg-surface-tint border-0 border-b-2 border-stone-200 focus:border-brand-600 rounded-t-xl py-3 focus:outline-none focus:ring-0 placeholder:text-stone-300 transition-colors"
             />
+            <div className="border-t border-stone-100 pt-4 space-y-3 text-left">
+              <p className="text-xs text-stone-400 font-medium text-center">Información de contacto · podés completarlo después</p>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="Teléfono"
+                className="w-full bg-surface-tint border-0 border-b-2 border-stone-200 focus:border-brand-600 rounded-t-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-0 transition-colors placeholder:text-stone-300"
+              />
+              <input
+                type="text"
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                placeholder="Dirección"
+                className="w-full bg-surface-tint border-0 border-b-2 border-stone-200 focus:border-brand-600 rounded-t-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-0 transition-colors placeholder:text-stone-300"
+              />
+              <input
+                type="text"
+                value={instagram}
+                onChange={e => setInstagram(e.target.value)}
+                placeholder="Instagram (sin @)"
+                className="w-full bg-surface-tint border-0 border-b-2 border-stone-200 focus:border-brand-600 rounded-t-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-0 transition-colors placeholder:text-stone-300"
+              />
+            </div>
             <button
               onClick={() => setStep(2)}
               disabled={!businessName.trim()}

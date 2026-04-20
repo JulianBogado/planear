@@ -1,6 +1,6 @@
 export const TIER_LIMITS = {
   free:    { maxSubscribers: 5,   maxPlans: 2,   canPrint: false, canStats: false, canReserve: false },
-  starter: { maxSubscribers: 50,  maxPlans: 3,   canPrint: true,  canStats: false, canReserve: false },
+  starter: { maxSubscribers: 15,  maxPlans: 3,   canPrint: true,  canStats: false, canReserve: false },
   pro:     { maxSubscribers: null, maxPlans: null, canPrint: true,  canStats: true,  canReserve: true  },
 }
 
@@ -25,11 +25,11 @@ export const TIER_INFO = {
   },
   starter: {
     label: 'Starter',
-    price: 25000,
-    priceLabel: '$25.000/mes',
+    price: 16900,
+    priceLabel: '$16.900/mes',
     description: 'Para negocios en crecimiento',
     features: [
-      'Hasta 50 clientes',
+      'Hasta 15 clientes',
       'Hasta 3 planes',
       'Registro de usos',
       'Historial de pagos',
@@ -43,8 +43,8 @@ export const TIER_INFO = {
   },
   pro: {
     label: 'Pro',
-    price: 30000,
-    priceLabel: '$30.000/mes',
+    price: 22900,
+    priceLabel: '$22.900/mes',
     description: 'Sin límites',
     features: [
       'Clientes ilimitados',

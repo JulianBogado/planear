@@ -99,7 +99,7 @@ export default function AppLayout({ business, updateBusiness }) {
                 </button>
                 <div className="my-1 border-t border-stone-100" />
                 <button
-                  onClick={signOut}
+                  onClick={async () => { await signOut(); navigate('/') }}
                   className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
                 >
                   <LogOut size={14} />

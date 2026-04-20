@@ -9,7 +9,7 @@ import StructuredData from '../components/seo/StructuredData'
 
 // ─── Feature comparison table ─────────────────────────────────────────────
 const FEATURES = [
-  { label: 'Clientes',              free: 'Hasta 5', starter: 'Hasta 50', pro: 'Ilimitados' },
+  { label: 'Clientes',              free: 'Hasta 5', starter: 'Hasta 15', pro: 'Ilimitados' },
   { label: 'Planes / paquetes',     free: 'Hasta 2', starter: 'Hasta 3',  pro: 'Ilimitados' },
   { label: 'Registro de usos',      free: true, starter: true, pro: true },
   { label: 'Historial de pagos',    free: true, starter: true, pro: true },
@@ -29,7 +29,7 @@ function FeatureCell({ value }) {
 const FAQS = [
   {
     q: '¿PLANE.AR es gratis?',
-    a: 'Sí. Existe un plan gratuito permanente con hasta 5 clientes y 2 planes activos. Además, al registrarte accedés a 7 días con todas las funciones Pro sin necesidad de tarjeta de crédito.',
+    a: 'Sí. Existe un plan gratuito permanente con hasta 5 clientes y 2 planes activos.',
   },
   {
     q: '¿Necesito tarjeta de crédito para empezar?',
@@ -37,7 +37,7 @@ const FAQS = [
   },
   {
     q: '¿Para qué tipo de negocios sirve PLANE.AR?',
-    a: 'Para cualquier negocio que venda servicios por membresía o paquete: barberías, peluquerías, centros de estética, masajistas, entrenadores personales, estudios de yoga y pilates, vinotecas, viveros, bares con cuota, y más.',
+    a: 'Para cualquier negocio que venda servicios por suscripciones, membresías o paquetes: barberías, peluquerías, centros de estética, masajistas, entrenadores personales, estudios de yoga y pilates, vinotecas, viveros, bares con cuota, y más.',
   },
   {
     q: '¿Puedo cancelar cuando quiero?',
@@ -49,7 +49,7 @@ const FAQS = [
   },
   {
     q: '¿Los precios tienen IVA?',
-    a: 'Los precios mostrados no incluyen IVA. El IVA se aplica según corresponda en el momento del pago.',
+    a: '¡Si! Los precios mostrados incluyen IVA.',
   },
 ]
 
@@ -84,17 +84,18 @@ function FaqItem({ q, a }) {
 }
 
 // ─── Pricing card ─────────────────────────────────────────────────────────
-function PricingCard({ tier }) {
+function PricingCard({ tier, active, onSelect }) {
   const info = TIER_INFO[tier]
   const isFree = tier === 'free'
   const isPro  = tier === 'pro'
 
   return (
     <div
-      className={`rounded-3xl p-7 flex flex-col relative ${
-        isPro ? 'text-white shadow-xl' : 'bg-white border border-stone-100 shadow-sm'
+      onClick={onSelect}
+      className={`rounded-3xl p-7 flex flex-col relative h-full cursor-pointer ${
+        active ? 'text-white shadow-xl' : 'bg-white border border-stone-100 shadow-sm hover:shadow-md'
       }`}
-      style={isPro ? { background: 'linear-gradient(145deg, #2785aa 0%, #007a8e 60%, #007a8e 100%)' } : {}}
+      style={active ? { background: 'linear-gradient(145deg, #2785aa 0%, #007a8e 60%, #007a8e 100%)' } : {}}
     >
       {isPro && (
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap"
@@ -103,32 +104,23 @@ function PricingCard({ tier }) {
         </span>
       )}
 
-      {isFree && (
-        <div className="mb-4 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-start gap-2">
-          <span className="text-base">🎁</span>
-          <p className="text-xs font-semibold text-amber-700 leading-snug">
-            Incluye 7 días con acceso a todas las funciones Pro
-          </p>
-        </div>
-      )}
-
-      <p className={`font-extrabold text-lg ${isPro ? 'text-white' : 'text-stone-800'}`}>{info.label}</p>
-      <p className={`text-sm mt-1 mb-4 ${isPro ? 'text-white/70' : 'text-stone-400'}`}>{info.description}</p>
-      <p className={`font-extrabold text-3xl mb-6 ${isPro ? 'text-white' : 'text-stone-900'}`}>
+      <p className={`font-extrabold text-lg ${active ? 'text-white' : 'text-stone-800'}`}>{info.label}</p>
+      <p className={`text-sm mt-1 mb-4 ${active ? 'text-white/70' : 'text-stone-400'}`}>{info.description}</p>
+      <p className={`font-extrabold text-3xl mb-6 ${active ? 'text-white' : 'text-stone-900'}`}>
         {info.priceLabel}
       </p>
 
       <ul className="space-y-2.5 flex-1 mb-6">
         {info.features.map(f => (
           <li key={f} className="flex items-center gap-2.5">
-            <Check size={14} style={isPro ? { color: 'rgba(255,255,255,0.8)' } : { color: '#2785aa' }} />
-            <span className={`text-sm ${isPro ? 'text-white/90' : 'text-stone-600'}`}>{f}</span>
+            <Check size={14} style={active ? { color: 'rgba(255,255,255,0.8)' } : { color: '#2785aa' }} />
+            <span className={`text-sm ${active ? 'text-white/90' : 'text-stone-600'}`}>{f}</span>
           </li>
         ))}
         {info.locked.map(f => (
           <li key={f} className="flex items-center gap-2.5 opacity-40">
-            <X size={14} className="text-stone-400" />
-            <span className="text-sm text-stone-500 line-through">{f}</span>
+            <X size={14} className={active ? 'text-white' : 'text-stone-400'} />
+            <span className={`text-sm line-through ${active ? 'text-white' : 'text-stone-500'}`}>{f}</span>
           </li>
         ))}
       </ul>
@@ -136,11 +128,11 @@ function PricingCard({ tier }) {
       <Link
         to="/register"
         className={`block text-center py-3 rounded-full text-sm font-bold transition-all hover:opacity-90 ${
-          isPro ? 'bg-white text-[#2785aa]' : 'text-white'
+          active ? 'bg-white text-[#2785aa]' : 'text-white'
         }`}
-        style={!isPro ? { backgroundColor: '#2785aa' } : {}}
+        style={!active ? { backgroundColor: '#2785aa' } : {}}
       >
-        {isFree ? 'Empezar gratis' : isPro ? 'Suscribirse al Pro' : 'Suscribirse al Starter'}
+        {isFree ? 'Empezar gratis' : isPro ? 'Suscribirse' : 'Suscribirse'}
       </Link>
     </div>
   )
@@ -148,6 +140,8 @@ function PricingCard({ tier }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────
 export default function Planes() {
+  const [activeTier, setActiveTier] = useState('pro')
+
   return (
     <div className="min-h-screen bg-white">
       <SEOHead
@@ -176,13 +170,11 @@ export default function Planes() {
       {/* ── Cards ── */}
       <section className="py-20 px-4 bg-white">
         <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Orden: Free → Starter → Pro */}
-            <PricingCard tier="free" />
-            <PricingCard tier="starter" />
-            <div className="relative mt-3">
-              <PricingCard tier="pro" />
-            </div>
+            <PricingCard tier="free" active={activeTier === 'free'} onSelect={() => setActiveTier('free')} />
+            <PricingCard tier="starter" active={activeTier === 'starter'} onSelect={() => setActiveTier('starter')} />
+            <PricingCard tier="pro" active={activeTier === 'pro'} onSelect={() => setActiveTier('pro')} />
           </div>
         </div>
       </section>

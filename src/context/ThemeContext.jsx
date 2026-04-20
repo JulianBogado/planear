@@ -48,7 +48,7 @@ const ThemeContext = createContext(null);
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
     const stored = localStorage.getItem(LS_KEY);
-    return THEMES.includes(stored) ? stored : "rosa";
+    return THEMES.includes(stored) ? stored : "celeste";
   });
 
   useEffect(() => {

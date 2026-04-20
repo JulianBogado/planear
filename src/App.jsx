@@ -23,6 +23,7 @@ import PublicBooking from './pages/PublicBooking'
 import AppLayout from './components/layout/AppLayout'
 import ScrollToTop from './components/ScrollToTop'
 import Contacto from './pages/Contacto'
+import EmailConfirmado from './pages/EmailConfirmado'
 
 function Spinner() {
   return (
@@ -72,6 +73,7 @@ export default function App() {
             <Route path="/precios" element={<Pricing />} />
             <Route path="/reservar/:slug" element={<PublicBooking />} />
             <Route path="/contacto" element={<Contacto />} />
+            <Route path="/email-confirmado" element={<EmailConfirmado />} />
 
             <Route element={<OnboardingGuard />}>
               <Route path="/onboarding" element={<Onboarding />} />

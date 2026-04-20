@@ -1,10 +1,13 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import SEOHead from '../components/seo/SEOHead'
+import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
+  const { user, loading: authLoading } = useAuth()
+  if (!authLoading && user) return <Navigate to="/dashboard" replace />
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -19,12 +22,12 @@ export default function Login() {
     if (error) {
       setError('Email o contraseña incorrectos.')
     } else {
-      navigate('/')
+      navigate('/dashboard')
     }
   }
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: 'var(--bg)' }}>
+    <div data-theme="celeste" className="min-h-screen flex" style={{ backgroundColor: 'var(--bg)' }}>
       <SEOHead
         title="Iniciar sesión — PLANE.AR"
         description="Accedé a tu cuenta de PLANE.AR."

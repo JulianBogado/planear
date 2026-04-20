@@ -61,7 +61,8 @@ El `VITE_SUPERUSER_EMAIL` habilita acceso a vistas especiales (Stats, Agenda) si
 | `/planes` | `Planes` | Landing de planes/precios (MARKETING — no es la gestión de planes) |
 | `/precios` | `Pricing` | Página de precios |
 | `/login` | `Login` | Login |
-| `/register` | `Register` | Registro |
+| `/register` | `Register` | Registro (nombre, apellido, teléfono, email, contraseña) |
+| `/email-confirmado` | `EmailConfirmado` | Página post-confirmación de email |
 | `/contacto` | `Contacto` | Formulario de contacto |
 | `/reservar/:slug` | `PublicBooking` | Reserva de turno pública (sin autenticación) |
 
@@ -159,7 +160,8 @@ subsmanager/
     │   ├── Plans.jsx              → Privada /servicios: CRUD de planes del negocio
     │   ├── Pricing.jsx            → Pública: tabla de precios
     │   ├── PublicBooking.jsx      → Pública: reserva por DNI; si suscripción vencida/sin usos muestra tarjeta con botón WhatsApp (business.phone) y opción guest
-    │   ├── Register.jsx           → Registro
+    │   ├── EmailConfirmado.jsx    → Pública: pantalla post-confirmación de email (ruta /email-confirmado)
+    │   ├── Register.jsx           → Registro (pide nombre, apellido, teléfono + email + contraseña). Post-registro muestra mensaje para confirmar email; no redirige a /onboarding hasta confirmar
     │   ├── Settings.jsx           → Config del negocio: nombre, rubro, redes, tema, agenda
     │   ├── Stats.jsx              → Estadísticas (tier pro / superuser)
     │   ├── SubscriberDetail.jsx   → Ficha de suscriptor: info, uso, historial, pagos
@@ -176,6 +178,7 @@ subsmanager/
 
 | Tabla | Campos clave |
 |-------|-------------|
+| `profiles` | `id` (= `auth.users.id`), `nombre`, `apellido`, `telefono`, `created_at` — creada automáticamente por trigger `on_auth_user_created` al registrarse |
 | `businesses` | `id`, `user_id`, `name`, `category`, `tier`, `theme`, `slug`, `phone`, `instagram`, `facebook`, `tiktok`, `address`, `agenda_enabled`, `mp_subscription_id`, `mp_status`, `subscription_ends_at` |
 | `plans` | `id`, `business_id`, `name`, `description`, `price`, `total_uses`, `duration_days`, `is_template`, `items` (text[]) |
 | `subscribers` | `id`, `business_id`, `plan_id`, `name`, `phone`, `dni`, `notes`, `start_date`, `end_date`, `uses_remaining`, `status` |
@@ -256,8 +259,8 @@ El campo `businesses.tier` controla las features disponibles:
 | Tier | Precio | Suscriptores | Planes | Print | Stats | Agenda |
 |------|--------|-------------|--------|-------|-------|--------|
 | free | $0 | 5 | 2 | ✗ | ✗ | ✗ |
-| starter | $25.000/mes | 50 | 3 | ✓ | ✗ | ✗ |
-| pro | $30.000/mes | ∞ | ∞ | ✓ | ✓ | ✓ |
+| starter | $16.900/mes | 15 | 3 | ✓ | ✗ | ✗ |
+| pro | $22.900/mes | ∞ | ∞ | ✓ | ✓ | ✓ |
 
 Usar `useSubscription(business)` para chequear permisos en componentes.
 
@@ -283,6 +286,37 @@ Los límites de tier se aplican en dos capas: frontend (`useSubscription`) + DB 
 | `plans` | `plans_insert_tier_limit` | INSERT cuando se supera el límite del tier |
 
 > `service_role` (edge functions) tiene BYPASSRLS y no es afectado. El superusuario (`is_admin()`) puede modificar el tier desde Settings.
+
+---
+
+## Estadísticas (plan Pro)
+
+Página `src/pages/Stats.jsx`, ruta `/estadisticas`. Requiere `canStats` (tier pro o superuser).
+
+**Hook:** `useStats(businessId)` → `{ usageByWeek, totalRevenue, recentRevenue, loading }`
+- `usageByWeek`: array `{ week: 'dd/MM', count: N }` — últimas 8 semanas de `usage_logs`
+- `totalRevenue`: suma total de `payments.amount`
+- `recentRevenue`: suma de `payments.amount` de los últimos 30 días
+
+**Métricas que muestra la página:**
+
+| Métrica | Descripción |
+|---------|-------------|
+| Total clientes | `subscribers.length` |
+| Activos | suscriptores con `status === 'active'` |
+| Por vencer | suscriptores con `status === 'expiring_soon'` |
+| Vencidos / sin usos | suscriptores con `status === 'expired'` o `'no_uses'` |
+
+**Gráficos:**
+
+| Gráfico | Tipo | Datos |
+|---------|------|-------|
+| Distribución por plan | Pie chart (donut, recharts) | Clientes por plan (`plan_id`) |
+| Consumo promedio por plan | Horizontal bar chart (recharts) | % de usos consumidos promedio = `(total_uses - uses_remaining) / total_uses * 100` |
+| Actividad reciente | Bar chart vertical (recharts) | `usageByWeek` — usos registrados por semana, últimas 8 semanas |
+| Ingresos | Dos tarjetas numéricas | `totalRevenue` (total acumulado) y `recentRevenue` (últimos 30 días) |
+
+**Librería de gráficos:** `recharts` — importar `PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer`. Los colores de los segmentos del pie usan `PLAN_COLORS` definido en `Stats.jsx`.
 
 ---
 
