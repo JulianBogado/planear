@@ -3,8 +3,8 @@ import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { format, addDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
-  ChevronLeft, Phone, CreditCard, Package, FileText,
-  Calendar, Pencil, Trash2, Check, RefreshCw, AlertTriangle, DollarSign,
+  ChevronLeft, Phone, CreditCard, Package, FileText, Mail,
+  Calendar, CalendarDays, Pencil, Trash2, Check, RefreshCw, AlertTriangle, DollarSign, Copy,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { usePlans } from '../hooks/usePlans'
@@ -16,13 +16,32 @@ import Modal from '../components/ui/Modal'
 import Input, { Textarea, Select } from '../components/ui/Input'
 import { StatusBadge } from '../components/ui/StatusBadge'
 
-function InfoRow({ icon, label, value }) {
+function InfoRow({ icon, label, value, copyable }) {
+  const { showToast } = useToast()
+
+  function handleCopy() {
+    if (!value) return
+    navigator.clipboard.writeText(value)
+    showToast(`${label} copiado`)
+  }
+
   return (
-    <div className="flex items-start gap-2.5">
+    <div className="flex items-start gap-2.5 group">
       <span className="text-stone-300 mt-0.5 shrink-0">{icon}</span>
       <div className="flex-1 min-w-0">
         <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest mb-0.5">{label}</p>
-        <p className="text-sm text-stone-700 font-medium truncate">{value ?? <span className="text-stone-300 font-normal">—</span>}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm text-stone-700 font-medium truncate">{value ?? <span className="text-stone-300 font-normal">—</span>}</p>
+          {copyable && value && (
+            <button
+              onClick={handleCopy}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-stone-300 hover:text-brand-500 shrink-0"
+              title={`Copiar ${label.toLowerCase()}`}
+            >
+              <Copy size={12} />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -33,13 +52,15 @@ export default function SubscriberDetail() {
   const navigate = useNavigate()
   const { business } = useOutletContext()
   const { plans } = usePlans(business?.id)
-  const { subscribers, loading: pageLoading, updateSubscriber, deleteSubscriber, registerUse, renewSubscriber } = useSubscribers(business?.id)
+  const { subscribers, loading: pageLoading, updateSubscriber, deleteSubscriber, registerUse, renewSubscriber, refetch: refetchSubscribers } = useSubscribers(business?.id)
   const { showToast } = useToast()
 
   const [usageLogs, setUsageLogs] = useState([])
   const [logsLoading, setLogsLoading] = useState(true)
   const [payments, setPayments] = useState([])
   const [paymentsLoading, setPaymentsLoading] = useState(true)
+  const [upcomingAppts, setUpcomingAppts] = useState([])
+  const [apptsLoading, setApptsLoading] = useState(true)
 
   const [renewModal, setRenewModal] = useState(false)
   const [editModal, setEditModal] = useState(false)
@@ -68,11 +89,30 @@ export default function SubscriberDetail() {
     fetchPayments()
   }, [id, subscriber?.start_date])
 
+  useEffect(() => {
+    if (!id || !business?.id) return
+    fetchUpcomingAppts()
+  }, [id, business?.id])
+
+  async function fetchUpcomingAppts() {
+    setApptsLoading(true)
+    const { data } = await supabase
+      .from('appointments')
+      .select('id, slot_start, slot_end, notes, status')
+      .eq('subscriber_id', id)
+      .eq('business_id', business.id)
+      .neq('status', 'cancelled')
+      .gte('slot_start', new Date().toISOString())
+      .order('slot_start', { ascending: true })
+    setUpcomingAppts(data ?? [])
+    setApptsLoading(false)
+  }
+
   async function fetchLogs() {
     if (!business?.id) return
     setLogsLoading(true)
     const { data } = await supabase
-      .from('usage_logs').select('*').eq('subscriber_id', id).eq('business_id', business.id).order('used_at', { ascending: false })
+      .from('usage_logs').select('*').eq('subscriber_id', id).eq('business_id', business.id).is('deleted_at', null).order('used_at', { ascending: false })
     setUsageLogs(data ?? [])
     setLogsLoading(false)
   }
@@ -163,16 +203,18 @@ export default function SubscriberDetail() {
   }
 
   async function handleDeleteLog(logId) {
-    await supabase.from('usage_logs').delete().eq('id', logId).eq('business_id', business.id)
-    const newUses = subscriber.uses_remaining + 1
-    const { status } = computeStatus(subscriber.end_date, newUses)
-    await updateSubscriber(id, { uses_remaining: newUses, status })
+    const { error } = await supabase.rpc('delete_usage_log_atomic', {
+      p_log_id:        logId,
+      p_business_id:   business.id,
+      p_delete_reason: 'Eliminado desde ficha del cliente',
+    })
+    if (error) { showToast('Error al eliminar el uso', 'error'); return }
     setDeleteLogConfirm(null)
-    fetchLogs()
+    await Promise.all([fetchLogs(), refetchSubscribers()])
   }
 
   function openEdit() {
-    setEditForm({ name: subscriber.name, phone: subscriber.phone ?? '', dni: subscriber.dni ?? '', plan_id: subscriber.plan_id ?? '', notes: subscriber.notes ?? '', start_date: subscriber.start_date })
+    setEditForm({ name: subscriber.name, phone: subscriber.phone ?? '', dni: subscriber.dni ?? '', email: subscriber.email ?? '', plan_id: subscriber.plan_id ?? '', notes: subscriber.notes ?? '', start_date: subscriber.start_date })
     setStartDateConfirm(false); setError(''); setEditModal(true)
   }
 
@@ -183,7 +225,7 @@ export default function SubscriberDetail() {
     if (!editForm.name.trim()) { setError('El nombre es obligatorio.'); return }
     if (!editForm.plan_id) { setError('Seleccioná un plan.'); return }
     setSaving(true)
-    let updateData = { name: editForm.name.trim(), phone: editForm.phone || null, dni: editForm.dni || null, plan_id: editForm.plan_id, notes: editForm.notes || null, start_date: editForm.start_date }
+    let updateData = { name: editForm.name.trim(), phone: editForm.phone || null, dni: editForm.dni || null, email: editForm.email?.trim() || null, plan_id: editForm.plan_id, notes: editForm.notes || null, start_date: editForm.start_date }
     if (startDateChanged || editForm.plan_id !== subscriber.plan_id) {
       const plan = plans.find(p => p.id === editForm.plan_id)
       if (plan) {
@@ -200,6 +242,13 @@ export default function SubscriberDetail() {
   }
 
   async function handleDelete() {
+    // Cancelar turnos pendientes futuros antes de eliminar el cliente
+    await supabase
+      .from('appointments')
+      .update({ status: 'cancelled', cancel_reason: 'Cliente eliminado' })
+      .eq('subscriber_id', id)
+      .eq('status', 'pending')
+      .gte('slot_start', new Date().toISOString())
     await deleteSubscriber(id)
     navigate('/suscriptores')
   }
@@ -219,7 +268,7 @@ export default function SubscriberDetail() {
               <StatusBadge status={statusInfo.status} />
             </div>
             <p className="text-sm text-stone-500 mt-0.5 flex items-center gap-1.5">
-              <Package size={13} /> {subscriber.plans?.name ?? 'Sin plan'}
+              <Package size={13} /> {subscriber.plans?.name ?? plans.find(p => p.id === subscriber.plan_id)?.name ?? 'Sin plan'}
             </p>
           </div>
           <div className="flex gap-1">
@@ -250,7 +299,7 @@ export default function SubscriberDetail() {
           <Button onClick={() => setUseModal(true)} disabled={!canRegisterUse} className="flex-1">
             <Check size={15} className="mr-1.5" /> Registrar uso
           </Button>
-          <Button variant="secondary" onClick={() => { setRenewPlanId(subscriber.plan_id ?? ''); setRenewAmount(subscriber.plans?.price ? String(subscriber.plans.price) : ''); setRenewModal(true) }} className="flex-1">
+          <Button variant="secondary" onClick={() => { setRenewPlanId(subscriber.plan_id ?? ''); const p = subscriber.plans ?? plans.find(pl => pl.id === subscriber.plan_id); setRenewAmount(p?.price ? String(p.price) : ''); setRenewModal(true) }} className="flex-1">
             <RefreshCw size={15} className="mr-1.5" /> Renovar
           </Button>
         </div>
@@ -265,8 +314,9 @@ export default function SubscriberDetail() {
           </button>
         </div>
         <div className="space-y-2.5">
-          <InfoRow icon={<Phone size={13} />} label="Teléfono" value={subscriber.phone} />
-          <InfoRow icon={<CreditCard size={13} />} label="DNI" value={subscriber.dni} />
+          <InfoRow icon={<Phone size={13} />} label="Teléfono" value={subscriber.phone} copyable />
+          <InfoRow icon={<Mail size={13} />} label="Email" value={subscriber.email} copyable />
+          <InfoRow icon={<CreditCard size={13} />} label="DNI" value={subscriber.dni} copyable />
           <InfoRow
             icon={<Package size={13} />}
             label="Plan"
@@ -294,6 +344,45 @@ export default function SubscriberDetail() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Upcoming appointments */}
+      <div className="bg-surface rounded-3xl shadow-card p-5">
+        <h2 className="font-semibold text-stone-800 mb-4 flex items-center gap-2">
+          <CalendarDays size={16} className="text-brand-400" /> Turnos reservados
+        </h2>
+        {apptsLoading ? (
+          <div className="space-y-2">
+            {[...Array(2)].map((_, i) => <div key={i} className="skeleton h-12 rounded-2xl" />)}
+          </div>
+        ) : upcomingAppts.length === 0 ? (
+          <p className="text-sm text-stone-400">Sin turnos próximos</p>
+        ) : (
+          <div className="space-y-2">
+            {upcomingAppts.map(appt => {
+              const start = new Date(appt.slot_start)
+              const end = new Date(appt.slot_end)
+              const isConfirmed = appt.status === 'confirmed'
+              return (
+                <div key={appt.id} className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${isConfirmed ? 'bg-emerald-50' : 'bg-brand-50'}`}>
+                  <div className={`text-center min-w-[48px] ${isConfirmed ? 'text-emerald-700' : 'text-brand-700'}`}>
+                    <p className="font-extrabold text-base leading-none">{format(start, 'HH:mm')}</p>
+                    <p className="text-[10px] opacity-70">{format(end, 'HH:mm')}</p>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${isConfirmed ? 'text-emerald-800' : 'text-brand-800'}`}>
+                      {format(start, "EEEE d 'de' MMMM", { locale: es })}
+                    </p>
+                    {appt.notes && <p className="text-xs text-stone-400 truncate">{appt.notes}</p>}
+                  </div>
+                  {isConfirmed && (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 rounded-full px-2 py-0.5 shrink-0">Confirmado</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Usage history */}
@@ -430,6 +519,7 @@ export default function SubscriberDetail() {
               <Input label="Teléfono (opcional)" type="tel" value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))} />
               <Input label="DNI (opcional)" value={editForm.dni} onChange={e => setEditForm(p => ({ ...p, dni: e.target.value }))} />
             </div>
+            <Input label="Email (opcional)" type="email" value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} />
             <Select label="Plan" value={editForm.plan_id} onChange={e => setEditForm(p => ({ ...p, plan_id: e.target.value }))}>
               <option value="">Seleccioná un plan</option>
               {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}

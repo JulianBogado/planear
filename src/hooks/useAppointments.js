@@ -103,6 +103,7 @@ export function useAppointments(businessId, date) {
       await supabase.from('usage_logs').insert({
         subscriber_id: subscriberId,
         business_id: businessId,
+        appointment_id: id,
         used_at: new Date().toISOString(),
         notes: 'Turno confirmado desde agenda',
       })
@@ -124,13 +125,32 @@ export function useAppointments(businessId, date) {
     return { error: null }
   }
 
-  async function cancelAppointment(id, reason) {
+  async function cancelAppointment(id, reason, appt = null) {
     const { error } = await supabase
       .from('appointments')
       .update({ status: 'cancelled', cancel_reason: reason || null })
       .eq('id', id)
-    if (!error) setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled', cancel_reason: reason || null } : a))
-    return { error }
+    if (error) return { error }
+
+    // Si el turno tenía un uso registrado, restaurarlo via RPC atómica
+    if (appt?.use_logged && appt?.subscriber_id) {
+      const { data: log } = await supabase
+        .from('usage_logs')
+        .select('id')
+        .eq('appointment_id', id)
+        .is('deleted_at', null)
+        .maybeSingle()
+      if (log) {
+        await supabase.rpc('delete_usage_log_atomic', {
+          p_log_id:        log.id,
+          p_business_id:   businessId,
+          p_delete_reason: `Turno cancelado: ${reason || 'sin motivo'}`,
+        })
+      }
+    }
+
+    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled', cancel_reason: reason || null } : a))
+    return { error: null }
   }
 
   return { appointments, loading, refetch: fetchAppointments, createAppointment, confirmAppointment, cancelAppointment }

@@ -21,12 +21,43 @@ export function useSubscribers(businessId) {
       return
     }
     setLoading(true)
-    const { data } = await supabase
-      .from('subscribers')
-      .select(`*, plans(${PLANS_SELECT})`)
-      .eq('business_id', businessId)
-      .order('name', { ascending: true })
-    setSubscribers((data ?? []).map(withStatus))
+
+    const [{ data: subs }, { data: lastUsed }, { data: nextAppts }] = await Promise.all([
+      supabase
+        .from('subscribers')
+        .select(`*, plans(${PLANS_SELECT})`)
+        .eq('business_id', businessId)
+        .order('name', { ascending: true }),
+      supabase
+        .from('usage_logs')
+        .select('subscriber_id, used_at')
+        .eq('business_id', businessId)
+        .is('deleted_at', null)
+        .order('used_at', { ascending: false })
+        .limit(500),
+      supabase
+        .from('appointments')
+        .select('subscriber_id, slot_start')
+        .eq('business_id', businessId)
+        .neq('status', 'cancelled')
+        .gte('slot_start', new Date().toISOString())
+        .order('slot_start', { ascending: true }),
+    ])
+
+    const lastUsedMap = {}
+    for (const row of lastUsed ?? []) {
+      if (!lastUsedMap[row.subscriber_id]) lastUsedMap[row.subscriber_id] = row.used_at
+    }
+    const nextApptMap = {}
+    for (const row of nextAppts ?? []) {
+      if (!nextApptMap[row.subscriber_id]) nextApptMap[row.subscriber_id] = row.slot_start
+    }
+
+    setSubscribers((subs ?? []).map(s => withStatus({
+      ...s,
+      last_used_at:     lastUsedMap[s.id] ?? null,
+      next_appointment: nextApptMap[s.id] ?? null,
+    })))
     setLoading(false)
   }, [businessId])
 
@@ -47,6 +78,7 @@ export function useSubscribers(businessId) {
       name: subData.name,
       phone: subData.phone || null,
       dni: subData.dni || null,
+      email: subData.email?.trim() || null,
       notes: subData.notes || null,
       start_date: startDate,
       end_date: endDate,
@@ -98,7 +130,13 @@ export function useSubscribers(businessId) {
       supabase.from('usage_logs').insert(logData),
     ])
 
-    if (!error) setSubscribers(prev => prev.map(s => s.id === subscriber.id ? withStatus(data) : s))
+    if (!error) {
+      const now = new Date().toISOString()
+      setSubscribers(prev => prev.map(s => s.id === subscriber.id
+        ? withStatus({ ...data, last_used_at: now, next_appointment: s.next_appointment })
+        : s
+      ))
+    }
     return { data, error }
   }
 
@@ -141,7 +179,12 @@ export function useSubscribers(businessId) {
     }
 
     const [{ data, error }] = await Promise.all(ops)
-    if (!error) setSubscribers(prev => prev.map(s => s.id === subscriber.id ? withStatus(data) : s))
+    if (!error) {
+      setSubscribers(prev => prev.map(s => s.id === subscriber.id
+        ? withStatus({ ...data, last_used_at: null, next_appointment: s.next_appointment })
+        : s
+      ))
+    }
     return { data, error }
   }
 

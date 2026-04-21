@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation, useOutletContext } from 'react-router-dom'
 import { format } from 'date-fns'
-import { Users, MoreHorizontal, Check, RefreshCw, ChevronRight, Search } from 'lucide-react'
+import { Users, MoreHorizontal, Check, RefreshCw, ChevronRight, Search, IdCard, Phone, CalendarCheck, Copy } from 'lucide-react'
 import { usePlans } from '../hooks/usePlans'
 import { useSubscribers } from '../hooks/useSubscribers'
+import { useToast } from '../context/ToastContext'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -20,7 +21,7 @@ const STATUS_FILTERS = [
   { value: 'expired',       label: 'Vencidos' },
 ]
 
-const EMPTY_FORM_BASE = { name: '', phone: '', dni: '', plan_id: '', notes: '' }
+const EMPTY_FORM_BASE = { name: '', phone: '', dni: '', email: '', plan_id: '', notes: '' }
 function freshForm() { return { ...EMPTY_FORM_BASE, start_date: format(new Date(), 'yyyy-MM-dd') } }
 
 export default function Subscribers() {
@@ -62,6 +63,10 @@ export default function Subscribers() {
 
   async function handleCreate(e) {
     e.preventDefault(); setError('')
+    if (!form.name.trim())  { setError('El nombre es obligatorio.'); return }
+    if (!form.phone.trim()) { setError('El teléfono es obligatorio.'); return }
+    if (!form.dni.trim())   { setError('El DNI es obligatorio.'); return }
+    if (!form.email.trim()) { setError('El email es obligatorio.'); return }
     if (!form.plan_id) { setError('Seleccioná un plan.'); return }
     const plan = plans.find(p => p.id === form.plan_id)
     if (!plan) { setError('Plan no encontrado.'); return }
@@ -173,6 +178,7 @@ export default function Subscribers() {
             <SubscriberCard
               key={sub.id}
               subscriber={sub}
+              plans={plans}
               onNavigate={() => navigate(`/suscriptores/${sub.id}`)}
               onRegisterUse={() => registerUse(sub)}
               onRenew={() => navigate(`/suscriptores/${sub.id}`)}
@@ -185,9 +191,10 @@ export default function Subscribers() {
         <form onSubmit={handleCreate} className="space-y-4">
           <Input label="Nombre completo" name="name" value={form.name} onChange={handleChange} placeholder="Ej: María García" required />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Teléfono (opcional)" name="phone" type="tel" value={form.phone} onChange={handleChange} placeholder="11 2345-6789" />
-            <Input label="DNI (opcional)" name="dni" value={form.dni} onChange={handleChange} placeholder="12.345.678" />
+            <Input label="Teléfono" name="phone" type="tel" value={form.phone} onChange={handleChange} placeholder="11 2345-6789" required />
+            <Input label="DNI" name="dni" value={form.dni} onChange={handleChange} placeholder="12.345.678" required />
           </div>
+          <Input label="Email" name="email" type="email" value={form.email} onChange={handleChange} placeholder="cliente@email.com" required />
           <Select label="Plan" name="plan_id" value={form.plan_id} onChange={handleChange} required>
             <option value="">Seleccioná un plan</option>
             {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -211,11 +218,12 @@ export default function Subscribers() {
   )
 }
 
-function SubscriberCard({ subscriber: sub, onNavigate, onRegisterUse, onRenew }) {
+function SubscriberCard({ subscriber: sub, plans, onNavigate, onRegisterUse, onRenew }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [registering, setRegistering] = useState(false)
   const menuRef = useRef(null)
+  const { showToast } = useToast()
 
   const canRegister = sub.uses_remaining > 0 && sub.status !== 'expired'
   const canRenew = sub.status === 'expired' || sub.status === 'expiring_soon' || sub.status === 'no_uses'
@@ -235,14 +243,32 @@ function SubscriberCard({ subscriber: sub, onNavigate, onRegisterUse, onRenew })
     setRegistering(false)
   }
 
+  function copyPhone(e) {
+    e.stopPropagation()
+    navigator.clipboard.writeText(sub.phone)
+    showToast('Teléfono copiado')
+  }
+
+  // Texto de estado en la esquina superior derecha
+  function statusDateText() {
+    if (sub.status === 'no_uses') {
+      return sub.last_used_at
+        ? `Sin usos desde ${format(new Date(sub.last_used_at), 'dd/MM/yy')}`
+        : 'Sin usos disponibles'
+    }
+    const label = sub.status === 'expired' ? 'Vencido el' : 'Vence el'
+    return `${label} ${format(new Date(sub.end_date + 'T00:00:00'), 'dd/MM/yy')}`
+  }
+
   return (
     <div className="bg-surface rounded-2xl shadow-card">
+      {/* Área principal clickeable */}
       <button onClick={onNavigate} className="w-full px-4 pt-4 pb-3 text-left hover:bg-stone-50/50 transition-colors rounded-t-2xl">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <p className="font-bold text-stone-900 text-[15px] truncate">{sub.name}</p>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <p className="text-xs text-stone-400 truncate">{sub.plans?.name ?? 'Sin plan'}</p>
+              <p className="text-xs text-stone-400 truncate">{sub.plans?.name ?? plans?.find(p => p.id === sub.plan_id)?.name ?? 'Sin plan'}</p>
               <StatusBadge status={sub.status} />
             </div>
           </div>
@@ -251,13 +277,34 @@ function SubscriberCard({ subscriber: sub, onNavigate, onRegisterUse, onRenew })
               <p className="font-extrabold text-xl text-stone-800">${Number(price).toLocaleString('es-AR')}</p>
             )}
             <p className="text-xs text-stone-400 mt-0.5">{sub.uses_remaining} usos restantes</p>
-            <p className="text-xs text-stone-400">
-              {(sub.status === 'expired' || sub.status === 'no_uses') ? 'Vencido el' : 'Vence el'}{' '}
-              {format(new Date(sub.end_date + 'T00:00:00'), 'dd/MM/yy')}
-            </p>
+            <p className="text-xs text-stone-400">{statusDateText()}</p>
           </div>
         </div>
       </button>
+
+      {/* Franja de info — fuera del botón para permitir interacciones propias */}
+      <div className="px-4 pb-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-stone-100 pt-2.5">
+        {sub.dni && (
+          <span className="flex items-center gap-1 text-[10px] text-stone-400">
+            <IdCard size={10} className="shrink-0" /> {sub.dni}
+          </span>
+        )}
+        {sub.phone && (
+          <button
+            onClick={copyPhone}
+            className="flex items-center gap-1 text-[10px] text-stone-400 hover:text-brand-600 transition-colors group"
+            title="Copiar teléfono"
+          >
+            <Phone size={10} className="shrink-0" />
+            {sub.phone}
+            <Copy size={9} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ml-0.5" />
+          </button>
+        )}
+        <span className="flex items-center gap-1 text-[10px] text-stone-400">
+          <CalendarCheck size={10} className="shrink-0" />
+          Activo desde {format(new Date(sub.start_date + 'T00:00:00'), 'dd/MM/yy')}
+        </span>
+      </div>
 
       <div className="px-4 pb-3 flex items-center justify-between">
         <div className="flex gap-3">

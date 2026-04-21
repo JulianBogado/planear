@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { format, addDays, startOfMonth, isToday, isTomorrow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Settings2, Plus, Check, X, User, UserCheck, CalendarDays, AlertTriangle } from 'lucide-react'
+import { Settings2, Plus, Check, X, User, UserCheck, CalendarDays, AlertTriangle, Trash2 } from 'lucide-react'
 import { useAppointments, useMonthAppointments, usePastPendingAppointments, useWeekAppointments, getAvailableSlots } from '../hooks/useAppointments'
+import { useUsageLogs } from '../hooks/useUsageLogs'
 import { useIsAdmin } from '../hooks/useIsAdmin'
 import { useSubscribers } from '../hooks/useSubscribers'
 import { useAvailability } from '../hooks/useAvailability'
@@ -26,7 +27,7 @@ export default function Agenda() {
   const today = new Date()
   const [selectedDate, setSelectedDate] = useState(today)
   const [calendarMonth, setCalendarMonth] = useState(startOfMonth(today))
-  const [view, setView] = useState('day') // 'day' | 'week'
+  const [view, setView] = useState('day') // 'day' | 'week' | 'history'
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd')
   const tomorrowStr = format(addDays(today, 1), 'yyyy-MM-dd')
@@ -49,9 +50,15 @@ export default function Agenda() {
   )
   const { availability } = useAvailability(business)
   const { subscribers } = useSubscribers(business?.id)
+  const { logs, loading: logsLoading, deleteUsage } = useUsageLogs(view === 'history' ? business?.id : null)
   const { showToast } = useToast()
 
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+
+  // Delete usage modal
+  const [deleteUsageModal, setDeleteUsageModal] = useState({ open: false, log: null })
+  const [deleteUsageReason, setDeleteUsageReason] = useState('')
+  const [deletingUsage, setDeletingUsage] = useState(false)
 
   // New appointment modal
   const [newModal, setNewModal] = useState(false)
@@ -64,7 +71,7 @@ export default function Agenda() {
   const [showSubDropdown, setShowSubDropdown] = useState(false)
 
   // Cancel modal
-  const [cancelModal, setCancelModal] = useState({ open: false, id: null })
+  const [cancelModal, setCancelModal] = useState({ open: false, id: null, appt: null })
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
 
@@ -128,19 +135,32 @@ export default function Agenda() {
     refetchPast()
   }
 
-  function openCancelModal(id) {
+  function openCancelModal(apptOrId) {
+    const id = typeof apptOrId === 'string' ? apptOrId : apptOrId?.id
+    const appt = typeof apptOrId === 'object' ? apptOrId : null
     setCancelReason('')
-    setCancelModal({ open: true, id })
+    setCancelModal({ open: true, id, appt })
   }
 
   async function handleCancelConfirm() {
     setCancelling(true)
-    const { error } = await cancelAppointment(cancelModal.id, cancelReason)
+    const { error } = await cancelAppointment(cancelModal.id, cancelReason, cancelModal.appt)
     setCancelling(false)
     if (error) { showToast('Error al cancelar', 'error'); return }
-    setCancelModal({ open: false, id: null })
+    setCancelModal({ open: false, id: null, appt: null })
     showToast('Turno cancelado')
     refetchPast()
+  }
+
+  async function handleDeleteUsage() {
+    if (!deleteUsageReason.trim()) return
+    setDeletingUsage(true)
+    const { error } = await deleteUsage(deleteUsageModal.log.id, deleteUsageReason.trim())
+    setDeletingUsage(false)
+    if (error) { showToast('Error al eliminar el uso', 'error'); return }
+    setDeleteUsageModal({ open: false, log: null })
+    setDeleteUsageReason('')
+    showToast('Uso eliminado y crédito devuelto al cliente')
   }
 
   async function handleCreate(e) {
@@ -194,7 +214,7 @@ export default function Agenda() {
                 key={appt.id}
                 appt={appt}
                 onConfirm={() => handleConfirm(appt)}
-                onCancel={() => openCancelModal(appt.id)}
+                onCancel={() => openCancelModal(appt)}
                 confirming={confirmingId === appt.id}
                 cancelling={cancellingId === appt.id}
               />
@@ -220,7 +240,7 @@ export default function Agenda() {
         <h1 className="font-extrabold text-3xl text-stone-900">Agenda</h1>
         <div className="flex gap-2">
           <button
-            onClick={() => navigate('/configuracion')}
+            onClick={() => navigate('/configuracion#agenda-seccion')}
             className="w-9 h-9 flex items-center justify-center rounded-full bg-surface shadow-card text-stone-400 hover:text-brand-600 transition-colors"
             title="Configurar agenda"
           >
@@ -274,6 +294,16 @@ export default function Agenda() {
         >
           Semana
         </button>
+        <button
+          onClick={() => setView('history')}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+            view === 'history'
+              ? 'bg-brand-600 text-white border-brand-600'
+              : 'border-stone-200 text-stone-600 hover:border-brand-300 bg-surface'
+          }`}
+        >
+          Historial
+        </button>
       </div>
 
       {/* Day view */}
@@ -309,6 +339,15 @@ export default function Agenda() {
         </div>
       )}
 
+      {/* History view */}
+      {view === 'history' && (
+        <UsageHistorySection
+          logs={logs}
+          loading={logsLoading}
+          onDelete={log => { setDeleteUsageReason(''); setDeleteUsageModal({ open: true, log }) }}
+        />
+      )}
+
       {/* Past unconfirmed appointments */}
       {!pastLoading && pastPending.length > 0 && (
         <div className="mt-2">
@@ -327,7 +366,7 @@ export default function Agenda() {
                 key={appt.id}
                 appt={appt}
                 onConfirm={() => handleConfirm(appt)}
-                onCancel={() => openCancelModal(appt.id)}
+                onCancel={() => openCancelModal(appt)}
                 confirming={confirmingId === appt.id}
                 cancelling={cancellingId === appt.id}
               />
@@ -466,8 +505,49 @@ export default function Agenda() {
         </form>
       </Modal>
 
+      {/* Delete usage modal */}
+      <Modal
+        open={deleteUsageModal.open}
+        onClose={() => setDeleteUsageModal({ open: false, log: null })}
+        title="Eliminar uso"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-stone-600">
+            Vas a eliminar el uso de{' '}
+            <strong>{deleteUsageModal.log?.subscribers?.name}</strong> del{' '}
+            <strong>
+              {deleteUsageModal.log
+                ? format(new Date(deleteUsageModal.log.used_at), "dd/MM/yyyy 'a las' HH:mm", { locale: es })
+                : ''}
+            </strong>.
+          </p>
+          <p className="text-xs text-stone-400">Se devolverá un uso al cliente. Esta acción queda registrada.</p>
+          <Textarea
+            label="Motivo (obligatorio)"
+            value={deleteUsageReason}
+            onChange={e => setDeleteUsageReason(e.target.value)}
+            placeholder="Ej: El cliente no asistió, error de carga..."
+          />
+          {!deleteUsageReason.trim() && (
+            <p className="text-xs text-red-500">El motivo es obligatorio para eliminar un uso.</p>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setDeleteUsageModal({ open: false, log: null })} className="flex-1">
+              Cancelar
+            </Button>
+            <button
+              onClick={handleDeleteUsage}
+              disabled={deletingUsage || !deleteUsageReason.trim()}
+              className="flex-1 py-2.5 rounded-full text-sm font-bold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50"
+            >
+              {deletingUsage ? 'Eliminando…' : 'Eliminar uso'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Cancel reason modal */}
-      <Modal open={cancelModal.open} onClose={() => setCancelModal({ open: false, id: null })} title="Cancelar turno">
+      <Modal open={cancelModal.open} onClose={() => setCancelModal({ open: false, id: null, appt: null })} title="Cancelar turno">
         <div className="space-y-4">
           <p className="text-sm text-stone-500">¿Por qué cancelás este turno? (opcional)</p>
           <textarea
@@ -478,7 +558,7 @@ export default function Agenda() {
             className="w-full bg-surface-tint rounded-2xl px-4 py-3 text-sm text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none border-0"
           />
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setCancelModal({ open: false, id: null })} className="flex-1">
+            <Button variant="outline" onClick={() => setCancelModal({ open: false, id: null, appt: null })} className="flex-1">
               Volver
             </Button>
             <button
@@ -495,6 +575,58 @@ export default function Agenda() {
   )
 }
 
+function UsageHistorySection({ logs, loading, onDelete }) {
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[...Array(4)].map((_, i) => <div key={i} className="skeleton h-14 rounded-2xl" />)}
+      </div>
+    )
+  }
+  if (!logs.length) {
+    return (
+      <div className="bg-surface rounded-2xl shadow-card px-4 py-8 text-center">
+        <p className="text-sm text-stone-400">Sin usos registrados todavía</p>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <p className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-3">
+        Historial de usos ({logs.length})
+      </p>
+      <div className="space-y-2">
+        {logs.map(log => (
+          <UsageLogRow key={log.id} log={log} onDelete={() => onDelete(log)} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function UsageLogRow({ log, onDelete }) {
+  return (
+    <div className="bg-surface rounded-2xl shadow-card flex items-center gap-3 px-4 py-3 group">
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-stone-800 text-sm truncate">
+          {log.subscribers?.name ?? '—'}
+        </p>
+        <p className="text-xs text-stone-400">
+          {format(new Date(log.used_at), "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
+          {log.notes && ` · ${log.notes}`}
+        </p>
+      </div>
+      <button
+        onClick={onDelete}
+        className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-50 text-stone-300 hover:text-red-500"
+        title="Eliminar uso"
+      >
+        <Trash2 size={13} />
+      </button>
+    </div>
+  )
+}
+
 function AppointmentCard({ appt, onConfirm, onCancel, confirming, cancelling }) {
   const time = format(new Date(appt.slot_start), 'HH:mm')
   const timeEnd = format(new Date(appt.slot_end), 'HH:mm')
@@ -502,6 +634,7 @@ function AppointmentCard({ appt, onConfirm, onCancel, confirming, cancelling }) 
   const isPending = appt.status === 'pending'
   const isConfirmed = appt.status === 'confirmed'
   const isCancelled = appt.status === 'cancelled'
+  const isPast = new Date(appt.slot_start) < new Date()
 
   return (
     <div className={`bg-surface rounded-2xl shadow-card overflow-hidden ${isCancelled ? 'opacity-50' : ''}`}>
@@ -542,21 +675,23 @@ function AppointmentCard({ appt, onConfirm, onCancel, confirming, cancelling }) 
           )}
         </div>
 
-        {isPending && (
+        {(isPending || isConfirmed) && (
           <div className="flex flex-col gap-1 items-center justify-center px-3 py-3">
-            <button
-              onClick={onConfirm}
-              disabled={confirming}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors disabled:opacity-50"
-              title="Confirmar"
-            >
-              {confirming ? <span className="text-[10px]">...</span> : <Check size={14} />}
-            </button>
+            {isPending && isPast && (
+              <button
+                onClick={onConfirm}
+                disabled={confirming}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors disabled:opacity-50"
+                title="Confirmar"
+              >
+                {confirming ? <span className="text-[10px]">...</span> : <Check size={14} />}
+              </button>
+            )}
             <button
               onClick={onCancel}
               disabled={cancelling}
               className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 text-stone-300 hover:text-red-500 transition-colors disabled:opacity-50"
-              title="Cancelar"
+              title="Cancelar turno"
             >
               {cancelling ? <span className="text-[10px]">...</span> : <X size={14} />}
             </button>
