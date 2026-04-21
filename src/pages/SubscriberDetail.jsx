@@ -78,7 +78,7 @@ export default function SubscriberDetail() {
   }
 
   async function fetchPayments() {
-    if (!business?.id) return
+    if (!business?.id || !subscriber) return
     setPaymentsLoading(true)
     const { data } = await supabase
       .from('payments').select('*').eq('subscriber_id', id).order('paid_at', { ascending: false })
@@ -163,7 +163,7 @@ export default function SubscriberDetail() {
   }
 
   async function handleDeleteLog(logId) {
-    await supabase.from('usage_logs').delete().eq('id', logId)
+    await supabase.from('usage_logs').delete().eq('id', logId).eq('business_id', business.id)
     const newUses = subscriber.uses_remaining + 1
     const { status } = computeStatus(subscriber.end_date, newUses)
     await updateSubscriber(id, { uses_remaining: newUses, status })

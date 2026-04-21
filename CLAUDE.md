@@ -38,15 +38,14 @@ Cada vez que haga una nueva implentación debe quedar asentada en una carpeta qu
 
 ## Variables de entorno
 
-Archivo: `subsmanager/.env`
+Archivo: `subsmanager/.env.local`
 
 ```
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
-VITE_SUPERUSER_EMAIL=...
 ```
 
-El `VITE_SUPERUSER_EMAIL` habilita acceso a vistas especiales (Stats, Agenda) sin importar el tier del negocio.
+> ⚠️ `VITE_SUPERUSER_EMAIL` fue eliminado del frontend (security review 2026-04-19). La verificación de admin se hace exclusivamente via la RPC `is_admin()` en Supabase — nunca comparar email en el cliente. Ver `src/hooks/useIsAdmin.js`.
 
 ---
 
@@ -326,10 +325,26 @@ Edge functions en `supabase/functions/`:
 
 | Función | Descripción |
 |---------|-------------|
-| `create-subscription` | Crea un preapproval en MP para el tier elegido. Requiere JWT. Devuelve `init_point`. |
-| `mp-webhook` | Recibe eventos de MP (`subscription_preapproval`), actualiza `tier` y `subscription_ends_at` en `businesses`. |
+| `create-subscription` | Crea un preapproval en MP para el tier elegido. `verify_jwt = false` en `config.toml` — valida el token internamente con `supabase.auth.getUser(token)`. Devuelve `init_point`. |
+| `mp-webhook` | Recibe eventos de MP (`subscription_preapproval`), actualiza `tier` y `subscription_ends_at` en `businesses`. Verifica firma HMAC-SHA256 si `MP_WEBHOOK_SECRET` está configurado. |
 
-El tier se transmite via `external_reference` en el preapproval. El webhook usa `service_role` para actualizar campos protegidos por RLS.
+**`external_reference`:** Se envía como `"${tier}:${userId}"` (ej: `"starter:uuid"`). Permite al webhook identificar el negocio sin depender del email del pagador.
+
+**Lookup del webhook (orden de prioridad):**
+1. Por `mp_subscription_id` (si el business ya fue vinculado).
+2. Por `user_id` extraído del `external_reference`.
+3. Fallback por email del pagador (casos legacy).
+
+**Variables de entorno (Supabase secrets):**
+
+| Variable | Requerida | Descripción |
+|----------|-----------|-------------|
+| `MP_ACCESS_TOKEN` | Sí | Token MP (`TEST-...` sandbox / `APP_USR-...` producción) |
+| `MP_WEBHOOK_SECRET` | No | Secret HMAC para verificar firma del webhook |
+| `MP_PLAN_STARTER_ID` | No | ID de plan MP (mapeo legacy) |
+| `MP_PLAN_PRO_ID` | No | ID de plan MP (mapeo legacy) |
+
+El webhook usa `service_role` para actualizar campos protegidos por RLS. Ver `doc/integracion-mercadopago.md` para detalle completo.
 
 ---
 

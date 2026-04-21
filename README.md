@@ -43,7 +43,6 @@ npm run dev
 |----------|-------------|
 | `VITE_SUPABASE_URL` | URL del proyecto Supabase |
 | `VITE_SUPABASE_ANON_KEY` | Clave anon pública de Supabase |
-| `VITE_SUPERUSER_EMAIL` | Email con acceso admin irrestricto |
 
 ---
 
@@ -201,8 +200,8 @@ Los temas funcionan mediante CSS custom properties (`--brand-600`, `--bg`, etc.)
 | Tier | Precio | Suscriptores | Planes | Imprimir | Stats | Agenda |
 |------|--------|-------------|--------|----------|-------|--------|
 | `free` | Gratis | 5 | 2 | ✗ | ✗ | ✗ |
-| `starter` | $25.000/mes | 50 | 3 | ✓ | ✗ | ✗ |
-| `pro` | $30.000/mes | Ilimitado | Ilimitado | ✓ | ✓ | ✓ |
+| `starter` | $16.900/mes | 15 | 3 | ✓ | ✗ | ✗ |
+| `pro` | $22.900/mes | Ilimitado | Ilimitado | ✓ | ✓ | ✓ |
 
 Usar el hook `useSubscription(business)` para verificar permisos en componentes.
 

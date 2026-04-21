@@ -12,7 +12,7 @@ const STEPS = [
     title: 'Creá tus planes',
     desc: 'Definí los servicios que ofrecés como paquetes. Cada plan tiene nombre, precio, cantidad de usos incluidos y duración en días.',
     details: [
-      'Editá el precio y los usos en cualquier momento',
+      'Editá el precio y cantidad de usos',
       'Plantillas pre-armadas por rubro (peluquería, yoga, entrenamiento…)',
       'Podés tener múltiples planes activos al mismo tiempo',
       'El plan se asigna cuando registrás un cliente',
@@ -611,7 +611,7 @@ export default function ComoFunciona() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               { Icon: Wine,     title: 'Vinotecas',            desc: 'Membresías de degustación mensual con paquetes personalizados.',    color: '#6a8ebc', bg: '#f0f4fb' },
-              { Icon: Leaf,     title: 'Viveros',              desc: 'Suscripciones de riego, armado floral o delivery de plantas.',      color: '#007a8e', bg: '#f0f8f9' },
+              { Icon: Leaf,     title: 'Viveros',              desc: 'Suscripciones de riego, armado floral o pick up de plantas.',      color: '#007a8e', bg: '#f0f8f9' },
               { Icon: Dumbbell, title: 'Boxes y entrenadores', desc: 'Clases por paquete o mensuales con registro exacto de asistencia.', color: '#2785aa', bg: '#f0f7fb' },
               { Icon: Sparkles, title: 'Centros de estética',  desc: 'Sesiones de tratamiento en paquetes o abonos mensuales.',          color: '#9b96c3', bg: '#f5f4fb' },
               { Icon: Scissors, title: 'Barberías',            desc: 'Abonos mensuales de cortes con control de frecuencia.',            color: '#C0A1C3', bg: '#faf5fb' },

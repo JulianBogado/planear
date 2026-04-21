@@ -382,7 +382,10 @@ export default function Settings() {
             {['free', 'starter', 'pro'].map(t => (
               <button
                 key={t}
-                onClick={() => updateBusiness(business.id, { tier: t })}
+                onClick={async () => {
+                  const { error } = await updateBusiness(business.id, { tier: t })
+                  if (error) showToast('No se pudo actualizar el tier', 'error')
+                }}
                 className={`py-2.5 rounded-2xl text-sm font-semibold transition-all border-2 ${
                   business.tier === t
                     ? 'border-brand-500 bg-brand-50 text-brand-700'

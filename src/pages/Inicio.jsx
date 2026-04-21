@@ -160,8 +160,8 @@ const RUBROS = [
 
 // ─── Testimoniales ───────────────────────────────────────────────────────────
 const TESTIMONIALS = [
-  { initial: 'M', name: 'Lauti Mendez', role: 'Barbería, Rosario', quote: 'Antes tenía todo en papel, un lío. Los chicos de Plane.ar me vinieron con una solución práctica. El equipo lo considera escencial para organizar el día a día.', color: '#2785aa' },
-  { initial: 'P', name: 'Pato Villarino', role: 'Vivero, Wilde', quote: 'La agenda es lo que más uso. Me sirve para predecir el stock y saber que tengo que comprar cada mes.', color: '#007a8e' },
+  { initial: 'L', name: 'Lauti Mendez', role: 'Barbería, Rosario', quote: 'Antes tenía todo en papel, un lío. Los chicos de Plane.ar me vinieron con una solución práctica. El equipo lo considera escencial para organizar el día a día.', color: '#2785aa' },
+  { initial: 'M', name: 'Marcos Villarino', role: 'Vivero, Sarandí', quote: 'La agenda es lo que más uso. Me sirve para predecir el stock y saber que tengo que comprar cada mes.', color: '#007a8e' },
   { initial: 'R', name: 'Ricky Muñiz', role: 'Vinoteca, Quilmes', quote: 'La gente elige su paquete de vinos a través de un link, Plane.ar me dice cuando lo pasan a buscar, lo armo y listo. Todo muy aceitado.', color: '#C0A1C3' },
 ]
 
@@ -312,18 +312,7 @@ export default function Inicio() {
       {/* ── Métricas ── */}
       <section className="py-20 px-4" style={{ background: 'linear-gradient(135deg, #2785aa 0%, #007a8e 100%)' }}>
         <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 text-center text-white">
-            {[
-              { value: '500+', label: 'Negocios usando PLANE.AR' },
-              { value: '12.000+', label: 'Clientes gestionados' },
-              { value: '98%', label: 'Renovaciones al día' },
-            ].map(({ value, label }) => (
-              <div key={label}>
-                <p className="font-extrabold text-5xl mb-2">{value}</p>
-                <p className="text-white/70 font-medium text-sm">{label}</p>
-              </div>
-            ))}
-          </div>
+
         </div>
       </section>
 
@@ -332,7 +321,7 @@ export default function Inicio() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="font-extrabold text-3xl sm:text-4xl text-stone-900 mb-4">
-              Lo que dicen quienes ya lo usan
+              Nuestros usuarios hablan por nosotros
             </h2>
             <p className="text-stone-400 text-lg font-medium">Negocios reales, resultados reales.</p>
           </div>

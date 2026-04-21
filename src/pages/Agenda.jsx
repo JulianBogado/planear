@@ -3,8 +3,8 @@ import { useNavigate, useOutletContext } from 'react-router-dom'
 import { format, addDays, startOfMonth, isToday, isTomorrow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Settings2, Plus, Check, X, User, UserCheck, CalendarDays, AlertTriangle } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
 import { useAppointments, useMonthAppointments, usePastPendingAppointments, useWeekAppointments, getAvailableSlots } from '../hooks/useAppointments'
+import { useIsAdmin } from '../hooks/useIsAdmin'
 import { useSubscribers } from '../hooks/useSubscribers'
 import { useAvailability } from '../hooks/useAvailability'
 import { useSubscription } from '../hooks/useSubscription'
@@ -19,10 +19,9 @@ import MiniCalendar from '../components/ui/MiniCalendar'
 
 export default function Agenda() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const { business } = useOutletContext()
   const { canReserve } = useSubscription(business)
-  const isSuperuser = user?.email === import.meta.env.VITE_SUPERUSER_EMAIL
+  const isSuperuser = useIsAdmin()
 
   const today = new Date()
   const [selectedDate, setSelectedDate] = useState(today)

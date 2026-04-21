@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const MP_API = 'https://api.mercadopago.com'
 
@@ -7,40 +7,64 @@ const TIER_PRICES: Record<string, { amount: number; label: string }> = {
   pro:     { amount: 22900, label: 'PLANE.AR Pro' },
 }
 
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'https://plane.ar',
+  'https://www.plane.ar',
+]
+
+function corsHeaders(req: Request) {
+  const origin = req.headers.get('Origin') ?? ''
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  }
+}
+
+function getSiteUrl(req: Request): string {
+  const origin = req.headers.get('Origin') ?? ''
+  return ALLOWED_ORIGINS.includes(origin) ? origin : 'https://plane.ar'
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    })
+    return new Response('ok', { headers: corsHeaders(req) })
   }
 
   try {
-    // 1. Verificar JWT de Supabase
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return json({ error: 'Unauthorized' }, 401)
-
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
+    if (!authHeader) return json(req, { error: 'Unauthorized' }, 401)
 
     const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
-    if (userError || !user) return json({ error: 'Unauthorized' }, 401)
 
-    // 2. Leer tier del body
+    // Validate token via Supabase Auth — works regardless of JWT algorithm (HS256 or RS256)
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    )
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    if (authError || !user || !user.email) {
+      return json(req, { error: 'Unauthorized' }, 401)
+    }
+
+    const userId = user.id
+    const userEmail = user.email
+
     const { tier } = await req.json()
-    if (!TIER_PRICES[tier]) return json({ error: 'Invalid tier' }, 400)
+    if (!TIER_PRICES[tier]) return json(req, { error: 'Invalid tier' }, 400)
 
-    const mpToken = Deno.env.get('MP_ACCESS_TOKEN')!
-    const siteUrl = Deno.env.get('SITE_URL') ?? 'http://localhost:5173'
+    const mpToken = Deno.env.get('MP_ACCESS_TOKEN')
+    if (!mpToken) {
+      console.error('MP_ACCESS_TOKEN not configured')
+      return json(req, { error: 'Server misconfiguration' }, 500)
+    }
+
+    const siteUrl = getSiteUrl(req)
     const tierInfo = TIER_PRICES[tier]
-
-    // 3. Crear preapproval directamente (sin necesidad de preapproval_plan)
-    const startDate = new Date(Date.now() + 60 * 1000).toISOString()
+    // MP requires start_date to be at least a few minutes in the future
+    const startDate = new Date(Date.now() + 10 * 60 * 1000).toISOString()
 
     const subRes = await fetch(`${MP_API}/preapproval`, {
       method: 'POST',
@@ -50,9 +74,9 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         reason: tierInfo.label,
-        external_reference: tier,
-        payer_email: user.email,
-        back_url: `${siteUrl}/configuracion`,
+        external_reference: `${tier}:${userId}`,
+        payer_email: userEmail,
+        back_url: `https://plane.ar/configuracion`,
         auto_recurring: {
           frequency: 1,
           frequency_type: 'months',
@@ -65,26 +89,34 @@ Deno.serve(async (req) => {
     })
 
     if (!subRes.ok) {
-      const err = await subRes.text()
-      console.error('Error creating MP preapproval:', err)
-      return json({ error: 'mp_error', detail: err }, 500)
+      const errBody = await subRes.text()
+      console.error('MP preapproval error:', subRes.status, errBody)
+      console.error('MP request payload:', JSON.stringify({
+        reason: tierInfo.label,
+        external_reference: `${tier}:${userId}`,
+        payer_email: userEmail,
+        back_url: `${siteUrl}/configuracion`,
+        start_date: startDate,
+        amount: tierInfo.amount,
+      }))
+      return json(req, { error: 'mp_error', detail: subRes.status, mp_message: errBody }, 500)
     }
 
     const subData = await subRes.json()
-    return json({ init_point: subData.init_point })
+    return json(req, { init_point: subData.init_point })
 
   } catch (e) {
-    console.error('Unexpected error:', e)
-    return json({ error: 'Internal server error' }, 500)
+    console.error('Unexpected error in create-subscription:', e)
+    return json(req, { error: 'Internal server error' }, 500)
   }
 })
 
-function json(data: unknown, status = 200) {
+function json(req: Request, data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
+      ...corsHeaders(req),
     },
   })
 }

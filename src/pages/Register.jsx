@@ -24,7 +24,8 @@ export default function Register() {
     if (!apellido.trim()) { setError('Ingresá tu apellido.'); return }
     if (telefono.replace(/\D/g, '').length < 8) { setError('Ingresá un teléfono válido (mínimo 8 dígitos).'); return }
     if (password !== confirm) { setError('Las contraseñas no coinciden.'); return }
-    if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return }
+    if (password.length < 8) { setError('La contraseña debe tener al menos 8 caracteres.'); return }
+    if (!/\d/.test(password)) { setError('La contraseña debe incluir al menos un número.'); return }
     setLoading(true)
     const { error } = await supabase.auth.signUp({
       email,

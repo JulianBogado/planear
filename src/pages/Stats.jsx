@@ -4,7 +4,7 @@ import {
 } from 'recharts'
 import { useNavigate, useOutletContext, Link } from 'react-router-dom'
 import { BarChart2 } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
+import { useIsAdmin } from '../hooks/useIsAdmin'
 import { usePlans } from '../hooks/usePlans'
 import { useSubscribers } from '../hooks/useSubscribers'
 import { useStats } from '../hooks/useStats'
@@ -44,13 +44,12 @@ function PctTooltip({ active, payload }) {
 
 export default function Stats() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const { business } = useOutletContext()
   const { plans } = usePlans(business?.id)
   const { subscribers, loading } = useSubscribers(business?.id)
   const { usageByWeek, totalRevenue, recentRevenue, loading: statsLoading } = useStats(business?.id)
   const { canStats } = useSubscription(business)
-  const isSuperuser = user?.email === import.meta.env.VITE_SUPERUSER_EMAIL
+  const isSuperuser = useIsAdmin()
 
   if (loading) {
     return (

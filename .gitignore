@@ -14,6 +14,7 @@ dist-ssr/
 
 # Supabase CLI temporales
 supabase/.temp/
+.mcp.json
 
 # Claude Code / AI tooling
 .claude/
@@ -49,3 +50,6 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
+
+# Otros
+SESION_NOTAS.md
