@@ -130,6 +130,8 @@ export default function PublicBooking() {
   const availableSlots = availability?.length && selectedDate
     ? getAvailableSlots(availability, format(selectedDate, 'yyyy-MM-dd'), bookedSlots)
     : []
+  const simpleShifts = availableSlots.filter(s => s.isSimpleShift)
+  const granularSlots = availableSlots.filter(s => !s.isSimpleShift)
 
   // --- Loading / not found / disabled ---
 
@@ -388,16 +390,43 @@ export default function PublicBooking() {
                 No hay turnos disponibles para este día.
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {availableSlots.map(slot => (
-                  <button
-                    key={slot.start.toISOString()}
-                    onClick={() => handleSelectSlot(slot)}
-                    className="bg-white rounded-2xl shadow-sm py-3.5 text-center hover:shadow-md transition-all hover:border-brand-300 border-2 border-transparent active:scale-95"
-                  >
-                    <p className="font-bold text-stone-900">{format(slot.start, 'HH:mm')}</p>
-                  </button>
-                ))}
+              <div className="space-y-4">
+                {/* Turnos simples — cards grandes */}
+                {simpleShifts.length > 0 && (
+                  <div className="space-y-2">
+                    {simpleShifts.map(slot => (
+                      <button
+                        key={slot.start.toISOString()}
+                        onClick={() => handleSelectSlot(slot)}
+                        className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 bg-white transition-all text-left hover:border-brand-300 active:scale-[0.98] border-stone-100 shadow-sm"
+                      >
+                        <div>
+                          <p className="font-bold text-stone-900 text-sm">
+                            {slot.blockName ?? `${format(slot.start, 'HH:mm')} – ${format(slot.end, 'HH:mm')}`}
+                          </p>
+                          <p className="text-xs text-stone-400 mt-0.5">
+                            De {format(slot.start, 'HH:mm')} a {format(slot.end, 'HH:mm')}
+                          </p>
+                        </div>
+                        <span className="text-brand-500 text-lg font-bold">›</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Slots granulares — grilla de horarios */}
+                {granularSlots.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {granularSlots.map(slot => (
+                      <button
+                        key={slot.start.toISOString()}
+                        onClick={() => handleSelectSlot(slot)}
+                        className="bg-white rounded-2xl shadow-sm py-3.5 text-center hover:shadow-md transition-all hover:border-brand-300 border-2 border-transparent active:scale-95"
+                      >
+                        <p className="font-bold text-stone-900">{format(slot.start, 'HH:mm')}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -410,9 +439,23 @@ export default function PublicBooking() {
               ← Volver
             </button>
             <h2 className="font-bold text-stone-800 text-lg mb-1">Confirmá tu reserva</h2>
-            <p className="text-sm text-stone-400 mb-5">
-              {isToday(selectedDate) ? 'Hoy' : format(selectedDate, "d/MM", { locale: es })} · {format(selectedSlot.start, 'HH:mm')} – {format(selectedSlot.end, 'HH:mm')}
-            </p>
+            <div className="mb-5">
+              {selectedSlot?.isSimpleShift ? (
+                <div>
+                  <p className="text-sm font-semibold text-stone-700">
+                    {isToday(selectedDate) ? 'Hoy' : format(selectedDate, "d/MM", { locale: es })}
+                    {selectedSlot.blockName ? ` · ${selectedSlot.blockName}` : ''}
+                  </p>
+                  <p className="text-sm text-stone-400">
+                    Te esperamos de {format(selectedSlot.start, 'HH:mm')} a {format(selectedSlot.end, 'HH:mm')}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-stone-400">
+                  {isToday(selectedDate) ? 'Hoy' : format(selectedDate, "d/MM", { locale: es })} · {format(selectedSlot.start, 'HH:mm')} – {format(selectedSlot.end, 'HH:mm')}
+                </p>
+              )}
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-stone-500 mb-1.5">Nombre *</label>
@@ -456,8 +499,11 @@ export default function PublicBooking() {
                 {isToday(selectedDate) ? 'Hoy' : format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
               </p>
               <p className="text-sm text-stone-600">
-                <span className="font-semibold">Hora:</span>{' '}
-                {format(selectedSlot.start, 'HH:mm')} – {format(selectedSlot.end, 'HH:mm')}
+                <span className="font-semibold">Horario:</span>{' '}
+                {selectedSlot?.isSimpleShift
+                  ? `${selectedSlot.blockName ? selectedSlot.blockName + ' · ' : ''}De ${format(selectedSlot.start, 'HH:mm')} a ${format(selectedSlot.end, 'HH:mm')}`
+                  : `${format(selectedSlot.start, 'HH:mm')} – ${format(selectedSlot.end, 'HH:mm')}`
+                }
               </p>
               <p className="text-sm text-stone-600">
                 <span className="font-semibold">Nombre:</span> {form.name}

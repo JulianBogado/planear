@@ -9,34 +9,48 @@ export function getAvailableSlots(availabilityBlocks, dateStr, existingAppointme
 
   const date = new Date(dateStr + 'T00:00:00')
   const dayOfWeek = date.getDay()
-
-  // Count non-cancelled bookings per slot_start ISO string
-  const bookedCount = {}
-  for (const a of existingAppointments ?? []) {
-    if (a.status === 'cancelled') continue
-    const key = new Date(a.slot_start).toISOString()
-    bookedCount[key] = (bookedCount[key] || 0) + 1
-  }
+  const appts = (existingAppointments ?? []).filter(a => a.status !== 'cancelled')
 
   const allSlots = []
   for (const block of blocks) {
     if (!block.days_of_week?.includes(dayOfWeek)) continue
+
     const capacity = block.slot_capacity ?? 1
     const [startH, startM] = block.start_time.split(':').map(Number)
     const [endH, endM] = block.end_time.split(':').map(Number)
+    const blockStart = new Date(date); blockStart.setHours(startH, startM, 0, 0)
+    const blockEnd   = new Date(date); blockEnd.setHours(endH, endM, 0, 0)
 
-    let current = new Date(date)
-    current.setHours(startH, startM, 0, 0)
-    const endDate = new Date(date)
-    endDate.setHours(endH, endM, 0, 0)
-
-    while (current < endDate) {
-      const slotStart = new Date(current)
-      const slotEnd = new Date(current.getTime() + block.slot_duration * 60000)
-      if ((bookedCount[slotStart.toISOString()] ?? 0) < capacity) {
-        allSlots.push({ start: slotStart, end: slotEnd })
+    if (block.simple_shift) {
+      // One slot covering the entire block — count all bookings that fall within it
+      const booked = appts.filter(a => {
+        const s = new Date(a.slot_start)
+        return s >= blockStart && s < blockEnd
+      }).length
+      if (booked < capacity) {
+        allSlots.push({
+          start: blockStart,
+          end: blockEnd,
+          blockName: block.block_name || null,
+          isSimpleShift: true,
+        })
       }
-      current = slotEnd
+    } else {
+      // Granular slots — existing logic
+      const bookedCount = {}
+      for (const a of appts) {
+        const key = new Date(a.slot_start).toISOString()
+        bookedCount[key] = (bookedCount[key] || 0) + 1
+      }
+      let current = new Date(blockStart)
+      while (current < blockEnd) {
+        const slotStart = new Date(current)
+        const slotEnd = new Date(current.getTime() + block.slot_duration * 60000)
+        if ((bookedCount[slotStart.toISOString()] ?? 0) < capacity) {
+          allSlots.push({ start: slotStart, end: slotEnd, blockName: block.block_name || null, isSimpleShift: false })
+        }
+        current = slotEnd
+      }
     }
   }
 

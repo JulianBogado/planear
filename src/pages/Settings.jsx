@@ -30,7 +30,7 @@ export default function Settings() {
   const DAYS_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
   const SLOT_OPTIONS = [20, 40, 60, 120, 240]
   const CAPACITY_OPTIONS = [1, 2, 3, 5, 10]
-  const DEFAULT_BLOCK = { block_name: '', days_of_week: [1, 2, 3, 4, 5], start_time: '09:00', end_time: '18:00', slot_duration: 60, slot_capacity: 1 }
+  const DEFAULT_BLOCK = { block_name: '', days_of_week: [1, 2, 3, 4, 5], start_time: '09:00', end_time: '18:00', slot_duration: 60, slot_capacity: 1, simple_shift: false }
 
   const [agendaEnabled, setAgendaEnabled] = useState(true)
   const [allowGuestBookings, setAllowGuestBookings] = useState(false)
@@ -534,6 +534,17 @@ export default function Settings() {
                     placeholder="Ej: Mañana, Tarde…"
                     className="w-full bg-surface rounded-xl px-3 py-2 text-sm text-stone-800 border-0 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   />
+                  <label className="flex items-center gap-2 cursor-pointer mt-2.5">
+                    <input
+                      type="checkbox"
+                      checked={block.simple_shift ?? false}
+                      onChange={e => setAgendaBlocks(prev => prev.map((b, i) => i === idx ? { ...b, simple_shift: e.target.checked } : b))}
+                      className="accent-brand-600 w-4 h-4 rounded"
+                    />
+                    <span className="text-xs text-stone-500 font-medium">
+                      Turno simple — el cliente elige el bloque completo, no un horario exacto
+                    </span>
+                  </label>
                 </div>
 
                 {/* Días disponibles */}
@@ -584,26 +595,28 @@ export default function Settings() {
                   </div>
                 </div>
 
-                {/* Duración del turno */}
-                <div>
-                  <p className="text-xs font-semibold text-stone-500 mb-2">Duración del turno</p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {SLOT_OPTIONS.map(min => (
-                      <button
-                        key={min}
-                        type="button"
-                        onClick={() => setAgendaBlocks(prev => prev.map((b, i) => i === idx ? { ...b, slot_duration: min } : b))}
-                        className={`flex-1 min-w-0 py-2 rounded-xl text-xs font-semibold transition-all border-2 ${
-                          block.slot_duration === min
-                            ? 'bg-brand-50 border-brand-400 text-brand-700'
-                            : 'border-transparent bg-surface text-stone-500 hover:border-stone-200'
-                        }`}
-                      >
-                        {min >= 60 ? `${min / 60}h` : `${min}m`}
-                      </button>
-                    ))}
+                {/* Duración del turno — oculto en turno simple */}
+                {!block.simple_shift && (
+                  <div>
+                    <p className="text-xs font-semibold text-stone-500 mb-2">Duración del turno</p>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {SLOT_OPTIONS.map(min => (
+                        <button
+                          key={min}
+                          type="button"
+                          onClick={() => setAgendaBlocks(prev => prev.map((b, i) => i === idx ? { ...b, slot_duration: min } : b))}
+                          className={`flex-1 min-w-0 py-2 rounded-xl text-xs font-semibold transition-all border-2 ${
+                            block.slot_duration === min
+                              ? 'bg-brand-50 border-brand-400 text-brand-700'
+                              : 'border-transparent bg-surface text-stone-500 hover:border-stone-200'
+                          }`}
+                        >
+                          {min >= 60 ? `${min / 60}h` : `${min}m`}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Capacidad por turno */}
                 <div>
