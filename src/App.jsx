@@ -25,6 +25,8 @@ import ScrollToTop from './components/ScrollToTop'
 import Contacto from './pages/Contacto'
 import EmailConfirmado from './pages/EmailConfirmado'
 import Admin from './pages/Admin'
+import TerminosCondiciones from './pages/TerminosCondiciones'
+import PoliticaPrivacidad from './pages/PoliticaPrivacidad'
 
 function Spinner() {
   return (
@@ -75,6 +77,8 @@ export default function App() {
             <Route path="/reservar/:slug" element={<PublicBooking />} />
             <Route path="/contacto" element={<Contacto />} />
             <Route path="/email-confirmado" element={<EmailConfirmado />} />
+            <Route path="/terminos-y-condiciones" element={<TerminosCondiciones />} />
+            <Route path="/politica-de-privacidad" element={<PoliticaPrivacidad />} />
 
             <Route element={<OnboardingGuard />}>
               <Route path="/onboarding" element={<Onboarding />} />
