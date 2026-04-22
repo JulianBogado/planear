@@ -3,17 +3,43 @@ import { Mail, Clock, CheckCircle2 } from 'lucide-react'
 import PublicNavbar from '../components/layout/PublicNavbar'
 import PublicFooter from '../components/layout/PublicFooter'
 import SEOHead from '../components/seo/SEOHead'
+import { supabase } from '../lib/supabase'
 
 export default function Contacto() {
   const [sent, setSent] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', message: '' })
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
+  const [startedAt] = useState(() => Date.now())
+  const [form, setForm] = useState({ name: '', email: '', message: '', website: '' })
 
   function handleChange(e) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
+    if (sending) return
+
+    setSending(true)
+    setError('')
+
+    const { error: invokeError } = await supabase.functions.invoke('contact-form', {
+      body: {
+        name: form.name,
+        email: form.email,
+        message: form.message,
+        website: form.website,
+        form_started_at: startedAt,
+      },
+    })
+
+    setSending(false)
+
+    if (invokeError) {
+      setError('No pudimos enviar tu mensaje en este momento. Intentá de nuevo en unos minutos.')
+      return
+    }
+
     setSent(true)
   }
 
@@ -87,6 +113,16 @@ export default function Contacto() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
+                <input
+                  type="text"
+                  name="website"
+                  value={form.website}
+                  onChange={handleChange}
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  className="hidden"
+                />
                 <div>
                   <label className="block text-xs font-bold text-stone-500 mb-1.5 uppercase tracking-wide">Nombre</label>
                   <input
@@ -125,11 +161,17 @@ export default function Contacto() {
                 </div>
                 <button
                   type="submit"
+                  disabled={sending}
                   className="w-full py-3 rounded-full text-sm font-bold text-white transition-all hover:opacity-90"
                   style={{ backgroundColor: '#2785aa' }}
                 >
-                  Enviar mensaje
+                  {sending ? 'Enviando...' : 'Enviar mensaje'}
                 </button>
+                {error && (
+                  <p className="text-sm text-red-600 text-center leading-relaxed">
+                    {error}
+                  </p>
+                )}
               </form>
             )}
           </div>
