@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, Users, Package, Settings2, BarChart2, HelpCircle, CalendarDays, LogOut } from 'lucide-react'
+import { Home, Users, Package, Settings2, BarChart2, HelpCircle, CalendarDays, LogOut, Shield } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useSubscription } from '../../hooks/useSubscription'
 import { useIsAdmin } from '../../hooks/useIsAdmin'
@@ -97,6 +97,15 @@ export default function AppLayout({ business, updateBusiness }) {
                   <Settings2 size={14} className="text-stone-400" />
                   Configuración
                 </button>
+                {isSuperuser && (
+                  <button
+                    onClick={() => { navigate('/admin'); setConfigOpen(false) }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Shield size={14} className="text-stone-400" />
+                    Panel admin
+                  </button>
+                )}
                 <div className="my-1 border-t border-stone-100" />
                 <button
                   onClick={async () => { await signOut(); navigate('/') }}
@@ -183,6 +192,15 @@ export default function AppLayout({ business, updateBusiness }) {
                 <Settings2 size={14} className="text-stone-400" />
                 Configuración
               </button>
+              {isSuperuser && (
+                <button
+                  onClick={() => { navigate('/admin'); setConfigOpen(false) }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 transition-colors"
+                >
+                  <Shield size={14} className="text-stone-400" />
+                  Panel admin
+                </button>
+              )}
               <div className="my-1 border-t border-stone-100" />
               <button
                 onClick={signOut}

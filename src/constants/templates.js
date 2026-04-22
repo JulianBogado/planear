@@ -1,7 +1,7 @@
 import {
   Scissors, Sparkles, Flower2, Dumbbell,
   Activity, GlassWater, Wrench,
-  Gem, Eye, Feather, Stethoscope, Wine,
+  Gem, Eye, Feather, Stethoscope, Wine, Sprout,
 } from 'lucide-react'
 
 export const CATEGORIES = [
@@ -16,53 +16,178 @@ export const CATEGORIES = [
   { value: 'masajista',   label: 'Masajista',           Icon: Feather },
   { value: 'dermatologa', label: 'Dermatóloga',         Icon: Stethoscope },
   { value: 'vinoteca',   label: 'Vinoteca',            Icon: Wine },
+  { value: 'vivero',      label: 'Vivero',              Icon: Sprout },
   { value: 'otro',        label: 'Otro',                Icon: Wrench },
 ]
 
 export const TEMPLATES = {
   peluqueria: [
-    { name: 'Plan mensual 4 cortes',    description: '4 cortes de pelo por mes',            price: 60000, total_uses: 4,  duration_days: 30 },
-    { name: 'Plan quincenal 2 cortes',  description: '2 cortes de pelo cada 15 días',        price: 32000, total_uses: 2,  duration_days: 15 },
+    {
+      name: 'Básico mensual',
+      description: '4 cortes al mes para mantener tu pelo siempre en forma',
+      price: 55000, total_uses: 4, duration_days: 30,
+      items: ['4 cortes de pelo', 'Peinado final'],
+    },
+    {
+      name: 'Retoque quincenal',
+      description: 'Un corte cada 15 días para que no te crezca ni un pelo',
+      price: 28000, total_uses: 2, duration_days: 15,
+      items: ['2 cortes de pelo'],
+    },
   ],
   manicura: [
-    { name: 'Plan mensual 4 turnos',    description: '4 turnos de manicura por mes',         price: 50000, total_uses: 4,  duration_days: 30 },
-    { name: 'Plan mensual 2 turnos',    description: '2 turnos de manicura por mes',          price: 27000, total_uses: 2,  duration_days: 30 },
+    {
+      name: 'Manos perfectas',
+      description: 'Manicura completa cada dos semanas, siempre impecable',
+      price: 50000, total_uses: 2, duration_days: 30,
+      items: ['2 turnos de manicura', 'Esmaltado a elección', 'Limpieza de cutícula'],
+    },
+    {
+      name: 'Cuidado mensual',
+      description: 'Un turno para mantener tus manos al día',
+      price: 27000, total_uses: 1, duration_days: 30,
+      items: ['1 turnos de manicura', 'Esmaltado a elección'],
+    },
   ],
   floreria: [
-    { name: 'Plan mensual 2 arreglos',  description: '2 arreglos florales por mes',          price: 50000, total_uses: 2,  duration_days: 30 },
-    { name: 'Plan mensual 4 arreglos',  description: '4 arreglos florales por mes',          price: 95000, total_uses: 4,  duration_days: 30 },
+    {
+      name: 'Flores cada 15 días',
+      description: 'Arreglos florales frescos para renovar tu espacio',
+      price: 50000, total_uses: 2, duration_days: 30,
+      items: ['2 arreglos florales medianos', 'Flores de temporada'],
+    },
+    {
+      name: 'Primavera todo el mes',
+      description: 'Un arreglo por semana para que tu local nunca pierda color',
+      price: 95000, total_uses: 4, duration_days: 30,
+      items: ['4 arreglos florales', 'Flores de temporada', 'Diseño a elección'],
+    },
   ],
   entrenador: [
-    { name: 'Plan mensual 8 clases',    description: '8 clases de entrenamiento por mes',    price: 80000, total_uses: 8,  duration_days: 30 },
-    { name: 'Plan mensual 12 clases',   description: '12 clases de entrenamiento por mes',   price: 110000, total_uses: 12, duration_days: 30 },
+    {
+      name: 'Entrada en calor',
+      description: 'El plan ideal para empezar a moverse con constancia',
+      price: 80000, total_uses: 8, duration_days: 30,
+      items: ['8 sesiones de entrenamiento', 'Rutina personalizada', 'Seguimiento de progreso'],
+    },
+    {
+      name: 'Sin excusas',
+      description: 'Para los que van en serio: tres veces por semana todo el mes',
+      price: 110000, total_uses: 12, duration_days: 30,
+      items: ['12 sesiones de entrenamiento', 'Rutina personalizada', 'Seguimiento de progreso', 'Asesoramiento nutricional'],
+    },
   ],
   yoga: [
-    { name: 'Plan mensual 12 clases',   description: '12 clases de yoga por mes',            price: 70000, total_uses: 12, duration_days: 30 },
-    { name: 'Plan mensual 8 clases',    description: '8 clases de yoga por mes',             price: 50000, total_uses: 8,  duration_days: 30 },
+    {
+      name: 'Flujo mensual',
+      description: 'Tres clases por semana para conectar cuerpo y mente',
+      price: 70000, total_uses: 12, duration_days: 30,
+      items: ['12 clases de yoga', 'Todos los niveles', 'Mat disponible en el estudio'],
+    },
+    {
+      name: 'Bienestar a tu ritmo',
+      description: 'Dos veces por semana para empezar a soltar el estrés',
+      price: 50000, total_uses: 8, duration_days: 30,
+      items: ['8 clases de yoga', 'Todos los niveles'],
+    },
   ],
   bar: [
-    { name: 'Plan mensual 8 cervezas',  description: '8 cervezas por mes',                  price: 40000, total_uses: 8,  duration_days: 30 },
-    { name: 'Plan mensual 16 cervezas', description: '16 cervezas por mes',                 price: 75000, total_uses: 16, duration_days: 30 },
+    {
+      name: 'Siempre listo',
+      description: 'Dos chopps por semana para los fanáticos de siempre',
+      price: 50000, total_uses: 8, duration_days: 30,
+      items: ['8 cervezas artesanales', 'Variedad de estilos', 'Descuento en picadas'],
+    },
+    {
+      name: 'Una mas y arrancamos',
+      description: 'Para el que no falta ningún jueves ni viernes',
+      price: 9000, total_uses: 16, duration_days: 30,
+      items: ['16 cervezas artesanales', 'Variedad de estilos', 'Vaso de regalo', 'Descuento en picadas'],
+    },
   ],
   estetica: [
-    { name: 'Plan mensual 4 limpiezas', description: '4 limpiezas de cutis por mes',     price: 70000, total_uses: 4, duration_days: 30 },
-    { name: 'Plan mensual 2 faciales',  description: '2 tratamientos faciales por mes',  price: 55000, total_uses: 2, duration_days: 30 },
+    {
+      name: 'Facial Premium',
+      description: 'Limpiezas semanales para una piel siempre luminosa',
+      price: 55000, total_uses: 2, duration_days: 30,
+      items: ['4 limpiezas de cutis', 'Hidratación post-tratamiento', 'Evaluación de piel', 'Masaje facial incluido'],
+    },
+    {
+      name: 'Cutis Radiante',
+      description: 'Dos tratamientos al mes para una piel que se note',
+      price: 30000, total_uses: 1, duration_days: 30,
+      items: ['2 tratamientos faciales', 'Hidratación profunda', 'Evaluación de piel'],
+    },
   ],
   lashista: [
-    { name: 'Plan mensual 2 diseños',   description: '2 diseños de cejas por mes',       price: 40000, total_uses: 2, duration_days: 30 },
-    { name: 'Plan quincenal 1 diseño',  description: '1 diseño de cejas cada 15 días',   price: 22000, total_uses: 1, duration_days: 15 },
+    {
+      name: 'Cejas al día',
+      description: 'Dos diseños al mes para que estés siempre lista',
+      price: 40000, total_uses: 2, duration_days: 30,
+      items: ['2 diseños de cejas', 'Depilación incluida'],
+    },
+    {
+      name: 'Retoque quincenal',
+      description: 'Un diseño cada 15 días, siempre perfectas',
+      price: 22000, total_uses: 1, duration_days: 15,
+      items: ['1 diseño de cejas', 'Depilación incluida'],
+    },
   ],
   masajista: [
-    { name: 'Plan mensual 4 masajes',   description: '4 masajes por mes',                price: 80000, total_uses: 4, duration_days: 30 },
-    { name: 'Plan quincenal 2 masajes', description: '2 masajes cada 15 días',           price: 45000, total_uses: 2, duration_days: 15 },
+    {
+      name: 'Relajación total',
+      description: 'Un masaje por semana para desenchufarse de todo',
+      price: 120000, total_uses: 4, duration_days: 30,
+      items: ['4 masajes de 60 minutos', 'Técnica a elección', 'Aromaterapia incluida'],
+    },
+    {
+      name: 'Alivio quincenal',
+      description: 'Dos masajes cada quince días para mantener el cuerpo en orden',
+      price: 45000, total_uses: 2, duration_days: 15,
+      items: ['2 masajes de 60 minutos', 'Técnica a elección'],
+    },
   ],
   dermatologa: [
-    { name: 'Plan mensual 2 consultas',     description: '2 consultas dermatológicas por mes',      price: 60000, total_uses: 2, duration_days: 30 },
-    { name: 'Plan trimestral 3 consultas',  description: '3 consultas dermatológicas por trimestre', price: 80000, total_uses: 3, duration_days: 90 },
+    {
+      name: 'Control mensual',
+      description: 'Dos consultas por mes para cuidar tu piel con seguimiento profesional',
+      price: 60000, total_uses: 2, duration_days: 30,
+      items: ['2 consultas dermatológicas', 'Análisis de piel', 'Recomendaciones personalizadas'],
+    },
+    {
+      name: 'Seguimiento trimestral',
+      description: 'Tres consultas en noventa días para un tratamiento con continuidad',
+      price: 80000, total_uses: 3, duration_days: 90,
+      items: ['3 consultas dermatológicas', 'Análisis de piel', 'Recomendaciones personalizadas', 'Foto-seguimiento'],
+    },
   ],
   vinoteca: [
-    { name: 'Membresía degustación mensual', description: '4 degustaciones guiadas por mes',   price: 60000, total_uses: 4, duration_days: 30 },
-    { name: 'Pack vinos del mes',            description: '2 combos de vinos curados por mes', price: 45000, total_uses: 2, duration_days: 30 },
+    {
+      name: 'Selección de la casa',
+      description: 'Una caja con 4 vinos seleccionados por nuestro sommelier',
+      price: 60000, total_uses: 1, duration_days: 30,
+      items: ['4 vinos reserva', 'Ficha técnica de cada vino'],
+    },
+    {
+      name: 'Viaje a la cava',
+      description: '2 cajas con 4 vinos cada una, para un recorrido completo por distintas regiones',
+      price: 90000, total_uses: 2, duration_days: 30,
+      items: ['2 combos de vinos seleccionados', 'Notas de cata', 'Recomendación de maridaje'],
+    },
+  ],
+  vivero: [
+    {
+      name: 'Verde en casa',
+      description: 'Una planta nueva por mes, seleccionada para tu espacio',
+      price: 25000, total_uses: 1, duration_days: 30,
+      items: ['1 planta de interior o exterior', 'Sustrato incluido', 'Guía de cuidados'],
+    },
+    {
+      name: 'Fan de las plantas',
+      description: 'Dos plantas al mes para ir armando tu espacio verde de a poco',
+      price: 50000, total_uses: 2, duration_days: 30,
+      items: ['2 plantas a elección', 'Guía de cuidados', 'Asesoramiento'],
+    },
   ],
   otro: [],
 }

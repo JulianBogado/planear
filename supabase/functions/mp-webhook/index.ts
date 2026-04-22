@@ -172,14 +172,25 @@ Deno.serve(async (req) => {
       return new Response('Business not found', { status: 200 })
     }
 
+    // Si el negocio tiene acceso promocional, no degradamos tier ni subscription_ends_at
+    const { data: bizCheck } = await supabase
+      .from('businesses')
+      .select('is_promo')
+      .eq('id', businessId)
+      .single()
+
+    const updatePayload: Record<string, unknown> = {
+      mp_subscription_id: preapproval.id,
+      mp_status: mpStatus,
+    }
+    if (!bizCheck?.is_promo) {
+      updatePayload.tier = newTier
+      updatePayload.subscription_ends_at = subscriptionEndsAt
+    }
+
     const { error: updateError } = await supabase
       .from('businesses')
-      .update({
-        tier: newTier,
-        mp_subscription_id: preapproval.id,
-        mp_status: mpStatus,
-        subscription_ends_at: subscriptionEndsAt,
-      })
+      .update(updatePayload)
       .eq('id', businessId)
 
     if (updateError) {
@@ -187,7 +198,7 @@ Deno.serve(async (req) => {
       return new Response('DB update error', { status: 500 })
     }
 
-    console.log(`Updated business tier=${newTier}, mp_status=${mpStatus}`)
+    console.log(`Updated business mp_status=${mpStatus}${bizCheck?.is_promo ? ' (promo — tier preserved)' : `, tier=${newTier}`}`)
     return new Response('ok', { status: 200 })
 
   } catch (e) {

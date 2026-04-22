@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Scissors, Dumbbell, BarChart2, Users, RefreshCw, Sparkles, Star, Wine, Settings2 } from 'lucide-react'
+import { Scissors, Dumbbell, BarChart2, Users, RefreshCw, Sparkles, Star, Wine, Settings2, Flower2, Activity, GlassWater, Eye, Stethoscope, Sprout, Feather, Gem } from 'lucide-react'
 import PublicNavbar from '../components/layout/PublicNavbar'
 import PublicFooter from '../components/layout/PublicFooter'
 import SEOHead from '../components/seo/SEOHead'
@@ -150,12 +150,19 @@ function MockAgenda() {
 
 // ─── Rubros ──────────────────────────────────────────────────────────────────
 const RUBROS = [
-  { Icon: Sparkles,  label: 'Masajistas',               color: '#C0A1C3', bg: '#faf5fb' },
-  { Icon: Star,      label: 'Centro de estética',        color: '#9b96c3', bg: '#f5f4fb' },
-  { Icon: Wine,      label: 'Vinotecas',                 color: '#6a8ebc', bg: '#f0f4fb' },
-  { Icon: Dumbbell,  label: 'Entrenadores',              color: '#2785aa', bg: '#f0f7fb' },
-  { Icon: Scissors,  label: 'Peluquerías y barberías',   color: '#007a8e', bg: '#f0f8f9' },
-  { Icon: Settings2, label: '¿No encontrás tu negocio? Crealo',  color: '#C0A1C3', bg: '#faf5fb', italic: true },
+  { Icon: Scissors,    label: 'Peluquerías y barberías',   color: '#007a8e', bg: '#f0f8f9' },
+  { Icon: Sparkles,    label: 'Manicura',                  color: '#c0609a', bg: '#fdf0f7' },
+  { Icon: Gem,         label: 'Centro de estética',        color: '#9b96c3', bg: '#f5f4fb' },
+  { Icon: Eye,         label: 'Lashistas',                 color: '#a07ac8', bg: '#f7f2fd' },
+  { Icon: Feather,     label: 'Masajistas',                color: '#C0A1C3', bg: '#faf5fb' },
+  { Icon: Stethoscope, label: 'Dermatólogas',              color: '#4e87c0', bg: '#f0f5fb' },
+  { Icon: Dumbbell,    label: 'Entrenadores',              color: '#2785aa', bg: '#f0f7fb' },
+  { Icon: Activity,    label: 'Yoga',                      color: '#5c9eaa', bg: '#f0f8f9' },
+  { Icon: Flower2,     label: 'Florerías',                 color: '#d4789e', bg: '#fdf2f6' },
+  { Icon: Sprout,      label: 'Viveros',                   color: '#5c8a3c', bg: '#f2f8ef' },
+  { Icon: Wine,        label: 'Vinotecas',                 color: '#6a8ebc', bg: '#f0f4fb' },
+  { Icon: GlassWater,  label: 'Bares y cervecerías',       color: '#8c6030', bg: '#faf5ef' },
+  { Icon: Settings2,   label: '¿No encontrás tu negocio? Crealo', color: '#C0A1C3', bg: '#faf5fb', italic: true },
 ]
 
 // ─── Testimoniales ───────────────────────────────────────────────────────────

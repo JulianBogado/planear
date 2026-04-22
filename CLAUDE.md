@@ -140,7 +140,7 @@ subsmanager/
     │                                canPrint, canStats, canReserve
     ├── constants/
     │   ├── templates.js           → CATEGORIES (12 rubros con íconos lucide)
-    │   │                            TEMPLATES (planes pre-armados por rubro)
+    │   │                            TEMPLATES (planes pre-armados por rubro, incluyen campo items: [])
     │   └── tiers.js               → TIER_LIMITS (maxSubscribers/maxPlans/features por tier)
     │                                TIER_INFO (precios y descripciones)
     ├── lib/
@@ -368,6 +368,22 @@ El campo `businesses.allow_guest_bookings` (boolean, default `false`) controla s
 - `true`: cualquier visitante puede reservar como invitado.
 
 El negocio lo controla desde Settings > Agenda y reservas > toggle "Reservas sin suscripción".
+
+---
+
+## Acceso Pro Promocional
+
+Campo `businesses.is_promo boolean DEFAULT false` que permite otorgar acceso pro gratuito a negocios seleccionados.
+
+- **Panel admin:** `/admin` (solo superusuarios). Accesible desde el dropdown Config → Panel admin.
+- **Tarjetas expandibles** por negocio: nombre, tier, cantidad de suscriptores. Al expandir: contacto copiable (email, teléfonos), redes, rubro, fecha de alta.
+- **Acciones por negocio:** dar/revocar acceso pro promo (con datepicker de vencimiento), editar datos del dueño y nombre de negocio, eliminar usuario completo (con confirmación).
+- **RPCs SECURITY DEFINER:** `admin_list_businesses()`, `admin_update_user(...)`, `admin_delete_user(uuid)`.
+- `admin_delete_user`: borra en orden correcto respetando FK NO ACTION (usage_logs → payments → businesses → profiles → auth.users).
+- **Policy `businesses_admin_update`** (PERMISSIVE FOR UPDATE): permite al admin actualizar negocios ajenos. Sin esta policy, los UPDATEs silenciosamente afectaban 0 filas.
+- **Settings:** si `business.is_promo = true`, muestra badge "Pro (promo)" y "Acceso promocional hasta: fecha" en vez de "Próximo cobro".
+- **MP Webhook:** si `is_promo = true`, no modifica `tier` ni `subscription_ends_at` al procesar eventos de MP.
+- Ver detalle en `doc/promo-access.md` y `doc/admin-panel-v2.md`.
 
 ---
 

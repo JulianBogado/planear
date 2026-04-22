@@ -407,9 +407,15 @@ export default function Settings() {
           <div className="bg-surface rounded-3xl shadow-card p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-stone-800">Mi suscripción</h2>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isExpired ? 'bg-red-50 text-red-600' : 'bg-brand-50 text-brand-700'}`}>
-                {isExpired ? `${info.label} (vencido)` : info.label}
-              </span>
+              {business.is_promo ? (
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">
+                  Pro (promo)
+                </span>
+              ) : (
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isExpired ? 'bg-red-50 text-red-600' : 'bg-brand-50 text-brand-700'}`}>
+                  {isExpired ? `${info.label} (vencido)` : info.label}
+                </span>
+              )}
             </div>
             <p className="text-sm text-stone-500 mb-4">
               {tier === 'free'
@@ -418,7 +424,15 @@ export default function Settings() {
                 ? 'Hasta 50 clientes · Hasta 3 planes · Cartelería incluida'
                 : 'Clientes ilimitados · Todo incluido'}
             </p>
-            {tier === 'free' ? (
+            {business.is_promo ? (
+              <div className="space-y-2">
+                {business.subscription_ends_at && (
+                  <p className="text-xs text-stone-400">
+                    Acceso promocional hasta: {new Date(business.subscription_ends_at).toLocaleDateString('es-AR')}
+                  </p>
+                )}
+              </div>
+            ) : tier === 'free' ? (
               <Link to="/precios">
                 <Button size="sm" className="w-full">Mejorar plan</Button>
               </Link>

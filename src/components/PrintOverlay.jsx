@@ -9,11 +9,14 @@ const CARD_STYLES = [
 ]
 
 const PRINT_COLORS = [
-  { id: 'brand',  label: 'Tema',    color: null },
-  { id: 'blue',   label: 'Azul',    color: '#2563eb' },
-  { id: 'green',  label: 'Verde',   color: '#16a34a' },
-  { id: 'violet', label: 'Violeta', color: '#7c3aed' },
-  { id: 'orange', label: 'Naranja', color: '#ea580c' },
+  { id: 'brand',  label: 'Tema',      color: null },
+  { id: 'blue',   label: 'Azul',      color: '#2563eb' },
+  { id: 'green',  label: 'Verde',     color: '#4d7c3f' },
+  { id: 'violet', label: 'Violeta',   color: '#7c3aed' },
+  { id: 'orange', label: 'Naranja',   color: '#ea580c' },
+  { id: 'wine',   label: 'Vino',      color: '#8b1f42' },
+  { id: 'brown',  label: 'Cervecero', color: '#8c5a2a' },
+  { id: 'yellow', label: 'Amarillo',  color: '#c49a00' },
 ]
 
 export default function PrintOverlay({ plans, business, onClose }) {
@@ -164,7 +167,6 @@ function StyleDot({ styleId }) {
 /* ── Contact line helper ──────────────────────────────── */
 function ContactLine({ business, light }) {
   const parts = []
-  if (business?.phone)     parts.push(business.phone)
   if (business?.instagram) parts.push(`@${business.instagram}`)
   if (parts.length === 0)  return null
   return (
@@ -190,7 +192,7 @@ function PrintCard({ plan, business, styleId, tall, color }) {
         className="print-card bg-white rounded-2xl flex flex-col shadow-card"
         style={{ ...cardStyle, padding: tall ? '28px' : '20px', border: '1px solid #d4d0c8', borderLeft: `5px solid ${color}` }}
       >
-        <p className="text-[9px] font-bold uppercase tracking-widest mb-3" style={{ color }}>
+        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color }}>
           {business?.name}
         </p>
         <p className={`font-extrabold text-stone-900 leading-snug ${tall ? 'text-2xl' : 'text-lg'}`}>{plan.name}</p>
@@ -226,7 +228,7 @@ function PrintCard({ plan, business, styleId, tall, color }) {
     return (
       <div className="print-card bg-white rounded-2xl overflow-hidden shadow-card flex flex-col" style={{ ...cardStyle, border: '1px solid #d4d0c8' }}>
         <div className="shrink-0" style={{ backgroundColor: color, padding: tall ? '20px 24px' : '16px 20px' }}>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 mb-1">{business?.name}</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-white/80 mb-1">{business?.name}</p>
           <p className={`text-white font-extrabold leading-snug ${tall ? 'text-2xl' : 'text-lg'}`}>{plan.name}</p>
         </div>
         <div className="flex flex-col flex-1" style={{ padding: tall ? '20px 24px' : '16px 20px' }}>
@@ -265,7 +267,7 @@ function PrintCard({ plan, business, styleId, tall, color }) {
       className="print-card rounded-2xl flex flex-col shadow-card"
       style={{ ...cardStyle, backgroundColor: color, padding: tall ? '28px' : '20px', border: '1px solid #d4d0c8' }}
     >
-      <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 mb-3">{business?.name}</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-white/80 mb-3">{business?.name}</p>
       <p className={`font-extrabold text-white leading-snug ${tall ? 'text-2xl' : 'text-lg'}`}>{plan.name}</p>
       {plan.description && (
         <p className="text-sm text-white/70 leading-relaxed mt-2">{plan.description}</p>

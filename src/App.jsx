@@ -24,6 +24,7 @@ import AppLayout from './components/layout/AppLayout'
 import ScrollToTop from './components/ScrollToTop'
 import Contacto from './pages/Contacto'
 import EmailConfirmado from './pages/EmailConfirmado'
+import Admin from './pages/Admin'
 
 function Spinner() {
   return (
@@ -88,6 +89,7 @@ export default function App() {
               <Route path="/agenda" element={<Agenda />} />
               <Route path="/ayuda" element={<Help />} />
               <Route path="/configuracion" element={<Settings />} />
+              <Route path="/admin" element={<Admin />} />
             </Route>
           </Routes>
         </BrowserRouter>
