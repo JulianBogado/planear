@@ -19,7 +19,7 @@ function PlanearLogo({ size = 28 }) {
 export default function PublicFooter() {
   return (
     <footer style={{ backgroundColor: '#007a8e' }} className="text-white py-14 px-4">
-      <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-10">
         <div>
           <div className="flex items-center gap-2.5 mb-4">
             <PlanearLogo size={28} />
@@ -59,6 +59,22 @@ export default function PublicFooter() {
             <li>
               <Link to="/register" className="text-sm text-white/60 hover:text-white transition-colors">
                 Registrarse gratis
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <p className="font-bold text-white/70 text-xs uppercase tracking-widest mb-4">Legal</p>
+          <ul className="space-y-2.5">
+            <li>
+              <Link to="/terminos-y-condiciones" className="text-sm text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#007a8e] transition-colors">
+                Términos y condiciones
+              </Link>
+            </li>
+            <li>
+              <Link to="/politica-de-privacidad" className="text-sm text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#007a8e] transition-colors">
+                Política de privacidad
               </Link>
             </li>
           </ul>
