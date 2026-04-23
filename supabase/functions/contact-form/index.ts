@@ -95,7 +95,6 @@ async function sendEmail({
   name,
   email,
   message,
-  contactId,
 }: {
   resendApiKey: string
   from: string
@@ -103,7 +102,6 @@ async function sendEmail({
   name: string
   email: string
   message: string
-  contactId: string
 }) {
   const submittedAt = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })
   const safeName = escapeHtml(name)
@@ -120,11 +118,10 @@ async function sendEmail({
       from,
       to: [to],
       reply_to: email,
-      subject: `Nuevo mensaje desde Contacto · ${name}`,
+      subject: `Nuevo mensaje de contacto · ${name}`,
       text: [
         'Nuevo mensaje desde el formulario público de contacto de PLANE.AR.',
         '',
-        `ID interno: ${contactId}`,
         `Fecha: ${submittedAt}`,
         `Nombre: ${name}`,
         `Email: ${email}`,
@@ -133,14 +130,21 @@ async function sendEmail({
         message,
       ].join('\n'),
       html: `
-        <div style="font-family: Arial, sans-serif; color: #1c1917; line-height: 1.6;">
-          <h2 style="margin: 0 0 16px;">Nuevo mensaje desde Contacto</h2>
-          <p style="margin: 0 0 8px;"><strong>ID interno:</strong> ${contactId}</p>
-          <p style="margin: 0 0 8px;"><strong>Fecha:</strong> ${submittedAt}</p>
-          <p style="margin: 0 0 8px;"><strong>Nombre:</strong> ${safeName}</p>
-          <p style="margin: 0 0 8px;"><strong>Email:</strong> ${safeEmail}</p>
-          <p style="margin: 20px 0 8px;"><strong>Mensaje</strong></p>
-          <div style="white-space: pre-wrap; border: 1px solid #e7e5e4; border-radius: 12px; padding: 16px; background: #fafaf9;">${safeMessage}</div>
+        <div style="font-family:Arial,sans-serif;color:#1c1917;line-height:1.6;">
+          <h2 style="margin:0 0 16px;font-size:22px;">Nuevo mensaje desde Contacto</h2>
+
+          <p style="margin:0 0 8px;"><strong>Fecha:</strong> ${submittedAt}</p>
+          <p style="margin:0 0 8px;"><strong>Nombre:</strong> ${safeName}</p>
+          <p style="margin:0 0 16px;"><strong>Correo:</strong> ${safeEmail}</p>
+
+          <p style="margin:0 0 8px;"><strong>Mensaje</strong></p>
+          <div style="white-space:pre-wrap;border:1px solid #d6d3d1;border-radius:8px;padding:14px;background:#fafaf9;margin-bottom:20px;">
+            ${safeMessage}
+          </div>
+
+          <a href="mailto:${safeEmail}" style="display:inline-block;padding:10px 16px;border-radius:6px;background:#2785aa;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;">
+            Responder mensaje
+          </a>
         </div>
       `,
     }),
@@ -245,7 +249,6 @@ Deno.serve(async req => {
       name,
       email,
       message,
-      contactId: insertedContact.id,
     })
 
     if (!emailResponse.ok) {
