@@ -89,17 +89,8 @@ Deno.serve(async (req) => {
     })
 
     if (!subRes.ok) {
-      const errBody = await subRes.text()
-      console.error('MP preapproval error:', subRes.status, errBody)
-      console.error('MP request payload:', JSON.stringify({
-        reason: tierInfo.label,
-        external_reference: `${tier}:${userId}`,
-        payer_email: userEmail,
-        back_url: `${siteUrl}/configuracion`,
-        start_date: startDate,
-        amount: tierInfo.amount,
-      }))
-      return json(req, { error: 'mp_error', detail: subRes.status, mp_message: errBody }, 500)
+      console.error('MP preapproval error:', subRes.status)
+      return json(req, { error: 'mp_error' }, 500)
     }
 
     const subData = await subRes.json()

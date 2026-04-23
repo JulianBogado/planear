@@ -1,6 +1,6 @@
 # Security Review — PLANE.AR
 
-**Fecha:** 2026-04-19 (segunda ronda: 2026-04-19)
+**Fecha:** 2026-04-19 (segunda ronda: 2026-04-19 | tercera ronda: 2026-04-22)
 **Revisado por:** Claude Code (análisis estático + auditoría de DB vía MCP)
 **Estado:** Corregido — 1 item manual pendiente (HaveIBeenPwned, ver abajo)
 
@@ -115,6 +115,35 @@ Deployment es en Oracle server, no Vercel. Se creó `deploy/nginx.conf` con los 
 - `Content-Security-Policy` (sin `unsafe-inline` en scripts)
 - Redirect HTTP → HTTPS
 - Cache de assets estáticos con hash
+
+---
+
+## Hallazgos y soluciones — Ronda 3 (implementaciones nuevas)
+
+### ✅ CRÍTICO 16 — mp_message con error crudo de MP devuelto al cliente
+**Archivo:** `supabase/functions/create-subscription/index.ts`
+El error text de la API de MP se estaba retornando directamente al frontend (`mp_message: errBody`), exponiendo detalles internos de MP y datos del request.
+```typescript
+// Antes: return json(req, { error: 'mp_error', detail: subRes.status, mp_message: errBody }, 500)
+// Después:
+return json(req, { error: 'mp_error' }, 500)
+```
+
+### ✅ ALTO 17 — payer_email en console.error (PII en logs)
+**Archivo:** `supabase/functions/create-subscription/index.ts`
+El bloque de debug logueaba `payer_email: userEmail` en Edge Function logs, exponiendo el email del usuario en el sistema de logs de Supabase.
+Eliminado el bloque de debug completo del error path.
+
+### ✅ MEDIO 18 — businesses: columnas sensibles accesibles por rol anon
+**DB — tabla `businesses`**
+La policy `Public reads businesses` con `qual: true` permitía que cualquier usuario no autenticado leyera TODAS las columnas de todos los negocios vía la REST API directamente (no solo desde el frontend).
+
+Columnas sensibles expuestas a `anon`: `user_id`, `tier`, `mp_subscription_id`, `mp_status`, `subscription_ends_at`, `is_promo`
+
+Solución: column-level privileges — se revocó el SELECT table-level de `anon` y se re-grantó solo las 13 columnas públicas necesarias para la página de reserva:
+`id, name, category, slug, theme, phone, address, instagram, facebook, tiktok, agenda_enabled, allow_guest_bookings, created_at`
+
+El rol `authenticated` conserva SELECT table-level completo (protegido por `own_business` policy).
 
 ---
 
