@@ -110,6 +110,17 @@ body {
   animation: toast-in 0.2s ease-out forwards;
 }
 
+/* ── Animación contador de usos ──────────────────────── */
+@keyframes uses-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+.animate-uses-pop {
+  display: inline-block;
+  animation: uses-pop 0.45s ease-out forwards;
+}
+
 /* ── Portal de impresión (oculto en pantalla) ─────────── */
 #print-portal { display: none; }
 

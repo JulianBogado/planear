@@ -117,7 +117,7 @@ export function useSubscribers(businessId) {
     const newUses = subscriber.uses_remaining - 1
     const { status } = computeStatus(subscriber.end_date, newUses)
 
-    const logData = { subscriber_id: subscriber.id }
+    const logData = { subscriber_id: subscriber.id, business_id: businessId }
     if (notes?.trim()) logData.notes = notes.trim()
 
     const [{ data, error }] = await Promise.all([

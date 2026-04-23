@@ -1,5 +1,8 @@
 [functions.create-subscription]
 verify_jwt = false
 
+[functions.cancel-subscription]
+verify_jwt = false
+
 [functions.contact-form]
 verify_jwt = false

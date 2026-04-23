@@ -222,8 +222,20 @@ function SubscriberCard({ subscriber: sub, plans, onNavigate, onRegisterUse, onR
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [registering, setRegistering] = useState(false)
+  const [usesAnimating, setUsesAnimating] = useState(false)
+  const [registered, setRegistered] = useState(false)
   const menuRef = useRef(null)
+  const prevUsesRef = useRef(sub.uses_remaining)
   const { showToast } = useToast()
+
+  useEffect(() => {
+    if (prevUsesRef.current !== sub.uses_remaining) {
+      prevUsesRef.current = sub.uses_remaining
+      setUsesAnimating(true)
+      const t = setTimeout(() => setUsesAnimating(false), 500)
+      return () => clearTimeout(t)
+    }
+  }, [sub.uses_remaining])
 
   const canRegister = sub.uses_remaining > 0 && sub.status !== 'expired'
   const canRenew = sub.status === 'expired' || sub.status === 'expiring_soon' || sub.status === 'no_uses'
@@ -239,8 +251,14 @@ function SubscriberCard({ subscriber: sub, plans, onNavigate, onRegisterUse, onR
 
   async function handleRegister() {
     setConfirming(false); setMenuOpen(false); setRegistering(true)
-    await onRegisterUse()
+    const result = await onRegisterUse()
     setRegistering(false)
+    if (result?.error) {
+      showToast('Error al registrar el uso', 'error')
+    } else {
+      setRegistered(true)
+      setTimeout(() => setRegistered(false), 1800)
+    }
   }
 
   function copyPhone(e) {
@@ -276,7 +294,12 @@ function SubscriberCard({ subscriber: sub, plans, onNavigate, onRegisterUse, onR
             {price != null && (
               <p className="font-extrabold text-xl text-stone-800">${Number(price).toLocaleString('es-AR')}</p>
             )}
-            <p className="text-xs text-stone-400 mt-0.5">{sub.uses_remaining} usos restantes</p>
+            <p className="text-xs text-stone-400 mt-0.5">
+              <span className={usesAnimating ? 'animate-uses-pop text-brand-600 font-semibold' : ''}>
+                {sub.uses_remaining}
+              </span>
+              {' '}usos restantes
+            </p>
             <p className="text-xs text-stone-400">{statusDateText()}</p>
           </div>
         </div>
@@ -377,6 +400,15 @@ function SubscriberCard({ subscriber: sub, plans, onNavigate, onRegisterUse, onR
                 Confirmar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {registered && (
+        <div className="px-4 pb-4">
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-3 flex items-center gap-2">
+            <Check size={14} className="text-green-600 shrink-0" />
+            <p className="text-xs font-medium text-green-800">Uso registrado</p>
           </div>
         </div>
       )}

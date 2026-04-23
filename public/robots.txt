@@ -10,5 +10,6 @@ Disallow: /configuracion
 Disallow: /onboarding
 Disallow: /login
 Disallow: /register
+Disallow: /reservar
 
 Sitemap: https://plane.ar/sitemap.xml

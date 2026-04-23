@@ -10,16 +10,19 @@ export default function SEOHead({
   ogType = 'website',
   noIndex = false,
 }) {
+  const hasDescription = Boolean(description?.trim())
+  const hasCanonical = Boolean(canonical?.trim())
+
   return (
     <Helmet>
       <title>{title}</title>
-      <meta name="description" content={description} />
-      <link rel="canonical" href={canonical} />
+      {hasDescription && <meta name="description" content={description} />}
+      {hasCanonical && <link rel="canonical" href={canonical} />}
       {noIndex && <meta name="robots" content="noindex, nofollow" />}
 
       <meta property="og:title" content={title} />
-      <meta property="og:description" content={description} />
-      <meta property="og:url" content={canonical} />
+      {hasDescription && <meta property="og:description" content={description} />}
+      {hasCanonical && <meta property="og:url" content={canonical} />}
       <meta property="og:type" content={ogType} />
       <meta property="og:image" content={ogImage} />
       <meta property="og:image:width" content="1200" />
@@ -28,7 +31,7 @@ export default function SEOHead({
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />
-      <meta name="twitter:description" content={description} />
+      {hasDescription && <meta name="twitter:description" content={description} />}
       <meta name="twitter:image" content={ogImage} />
     </Helmet>
   )
