@@ -22,6 +22,7 @@ import Agenda from './pages/Agenda'
 import PublicBooking from './pages/PublicBooking'
 import AppLayout from './components/layout/AppLayout'
 import ScrollToTop from './components/ScrollToTop'
+import GATracker from './components/GATracker'
 import Contacto from './pages/Contacto'
 import EmailConfirmado from './pages/EmailConfirmado'
 import Admin from './pages/Admin'
@@ -67,6 +68,7 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <ScrollToTop />
+          <GATracker />
           <Routes>
             <Route path="/" element={<RootRoute />} />
             <Route path="/login" element={<Login />} />

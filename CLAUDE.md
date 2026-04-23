@@ -409,6 +409,25 @@ Campo `businesses.is_promo boolean DEFAULT false` que permite otorgar acceso pro
 
 ---
 
+## Analytics (GA4)
+
+**Paquete:** `react-ga4`  
+**Variable de entorno:** `VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX` en `.env.local`
+
+| Archivo | Rol |
+|---------|-----|
+| `src/lib/analytics.js` | `initGA()`, `trackPageView(path)`, `trackEvent(action, params)` |
+| `src/components/GATracker.jsx` | Dispara `trackPageView` en cada cambio de ruta (montado en `App.jsx` dentro de `BrowserRouter`) |
+
+**Eventos trackeados:**
+- `pageview` — automático en cada ruta
+- `sign_up` — en `Register.jsx` al registrarse exitosamente
+- `cta_click` — en `Inicio.jsx` (hero y bottom CTA)
+
+Ver detalle en `doc/analytics-ga4.md`.
+
+---
+
 ## Lo que NO está implementado aún (V2+)
 
 - WhatsApp / emails automáticos

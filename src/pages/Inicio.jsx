@@ -3,6 +3,7 @@ import { Scissors, Dumbbell, BarChart2, Users, RefreshCw, Sparkles, Star, Wine, 
 import PublicNavbar from '../components/layout/PublicNavbar'
 import PublicFooter from '../components/layout/PublicFooter'
 import SEOHead from '../components/seo/SEOHead'
+import { trackEvent } from '../lib/analytics'
 import StructuredData from '../components/seo/StructuredData'
 
 const ORGANIZATION_SCHEMA = {
@@ -200,7 +201,7 @@ export default function Inicio() {
               ¿Ofrecés membresías, suscripciones o paquetes en tu negocio? ¿Se te está complicando administrarlas? PLANE.AR tiene todo lo que necesitás para organizar tus clientes, registrar sus pagos y renovaciones, agendar citas y más. Descubrilo
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
-              <Link to="/register" className="w-full sm:w-auto px-8 py-3.5 rounded-full text-sm font-bold text-white shadow-md transition-all hover:opacity-90" style={{ backgroundColor: '#2785aa' }}>
+              <Link to="/register" onClick={() => trackEvent('cta_click', { page: 'inicio', label: 'hero' })} className="w-full sm:w-auto px-8 py-3.5 rounded-full text-sm font-bold text-white shadow-md transition-all hover:opacity-90" style={{ backgroundColor: '#2785aa' }}>
                 Empezá gratis →
               </Link>
               <Link to="/como-funciona" className="w-full sm:w-auto px-8 py-3.5 rounded-full text-sm font-bold border-2 text-center transition-all hover:bg-stone-50" style={{ borderColor: '#2785aa', color: '#2785aa' }}>
@@ -358,7 +359,7 @@ export default function Inicio() {
           <p className="text-white/70 text-lg font-medium mb-8">
             Empezá gratis hoy. Sin tarjeta de crédito, sin límite de tiempo para el plan gratuito.
           </p>
-          <Link to="/register" className="inline-block px-10 py-4 rounded-full text-base font-bold bg-white transition-all hover:bg-white/90" style={{ color: '#2785aa' }}>
+          <Link to="/register" onClick={() => trackEvent('cta_click', { page: 'inicio', label: 'bottom_cta' })} className="inline-block px-10 py-4 rounded-full text-base font-bold bg-white transition-all hover:bg-white/90" style={{ color: '#2785aa' }}>
             Empezá gratis →
           </Link>
         </div>

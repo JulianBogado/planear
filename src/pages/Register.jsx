@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import SEOHead from '../components/seo/SEOHead'
+import { trackEvent } from '../lib/analytics'
 
 const INPUT_CLASS = "w-full bg-surface-tint border-0 border-b-2 border-stone-200 focus:border-brand-600 rounded-t-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-0 transition-colors placeholder:text-stone-400"
 const LABEL_CLASS = "block text-[10px] font-semibold text-stone-500 uppercase tracking-widest"
@@ -39,6 +40,7 @@ export default function Register() {
     if (error) {
       setError(error.message)
     } else {
+      trackEvent('sign_up', { method: 'email' })
       setRegistered(true)
     }
   }
