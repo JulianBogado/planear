@@ -49,6 +49,18 @@ Esta validación ocurre en dos capas:
 
 **Variables de entorno necesarias** (ya configuradas): `MP_ACCESS_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
+## Remoción del toggle "Reservas sin suscripción"
+
+Como parte de esta sesión (2026-04-23) se removió el toggle de "Reservas sin suscripción" de Settings por decisión de seguridad. Se eliminaron:
+
+- El estado `allowGuestBookings` y su inicialización en el useEffect
+- La función `handleToggleGuestBookings`
+- El bloque UI del toggle en la sección Agenda y reservas
+
+El campo `businesses.allow_guest_bookings` sigue existiendo en la DB pero queda hardcodeado en `false` — no es modificable desde el frontend. No reactivar sin implementar una capa de verificación adicional (ej: OTP).
+
+---
+
 ## Casos especiales
 
 - `is_promo = true`: los botones de downgrade no se muestran; la edge function rechaza con 403

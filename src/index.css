@@ -121,6 +121,26 @@ body {
   animation: uses-pop 0.45s ease-out forwards;
 }
 
+/* ── Animación tilde de confirmación ─────────────────── */
+@keyframes check-pop {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  55%  { transform: scale(1.18) rotate(4deg); opacity: 1; }
+  75%  { transform: scale(0.92) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.animate-check-pop {
+  animation: check-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  opacity: 0;
+  animation: fade-up 0.3s ease-out forwards;
+}
+
 /* ── Portal de impresión (oculto en pantalla) ─────────── */
 #print-portal { display: none; }
 

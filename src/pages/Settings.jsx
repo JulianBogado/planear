@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Pencil, Check, Camera, Globe, Music2, Phone, MapPin, ChevronRight, CalendarDays, Copy, CheckCheck, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useOutletContext } from 'react-router-dom'
@@ -27,6 +27,14 @@ export default function Settings() {
   const isSuperuser = useIsAdmin()
   const { canReserve, isExpired } = useSubscription(business)
   const { availability, saveAvailability, ensureSlug } = useAvailability(business)
+  const location = useLocation()
+
+  useEffect(() => {
+    if (location.hash === '#agenda-seccion') {
+      const el = document.getElementById('agenda-seccion')
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth' }), 100)
+    }
+  }, [location.hash])
 
   const DAYS_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
   const SLOT_OPTIONS = [20, 40, 60, 120, 240]
@@ -564,7 +572,7 @@ export default function Settings() {
 
       {/* Agenda — Pro only */}
       {(canReserve || isSuperuser) && (
-        <div className="bg-surface rounded-3xl shadow-card p-5">
+        <div id="agenda-seccion" className="scroll-mt-20 bg-surface rounded-3xl shadow-card p-5">
           <div className="flex items-center gap-2 mb-4">
             <CalendarDays size={16} className="text-brand-600" />
             <h2 className="font-semibold text-stone-800">Agenda y reservas</h2>

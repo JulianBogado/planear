@@ -96,7 +96,7 @@ subsmanager/
 └── src/
     ├── App.jsx                    → Router + guards (AppGuard, OnboardingGuard)
     ├── main.jsx                   → Entry point
-    ├── index.css                  → Themes CSS vars (4 temas: rosa/salvia/lila/celeste)
+    ├── index.css                  → Themes CSS vars (4 temas: rosa/salvia/lila/celeste) + clases de animación globales: `animate-toast`, `animate-uses-pop`, `animate-check-pop`, `animate-fade-up`, `animate-shimmer`
     ├── components/
     │   ├── PrintOverlay.jsx       → Portal de impresión de planes (createPortal)
     │   ├── ScrollToTop.jsx        → Auto-scroll al top en cada navegación
@@ -180,12 +180,12 @@ subsmanager/
 | `profiles` | `id` (= `auth.users.id`), `nombre`, `apellido`, `telefono`, `created_at` — creada automáticamente por trigger `on_auth_user_created` al registrarse |
 | `businesses` | `id`, `user_id`, `name`, `category`, `tier`, `theme`, `slug`, `phone`, `instagram`, `facebook`, `tiktok`, `address`, `agenda_enabled`, `mp_subscription_id`, `mp_status`, `subscription_ends_at` |
 | `plans` | `id`, `business_id`, `name`, `description`, `price`, `total_uses`, `duration_days`, `is_template`, `items` (text[]) |
-| `subscribers` | `id`, `business_id`, `plan_id`, `name`, `phone`, `dni`, `notes`, `start_date`, `end_date`, `uses_remaining`, `status` |
-| `usage_logs` | `id`, `subscriber_id`, `business_id`, `used_at`, `notes` |
+| `subscribers` | `id`, `business_id`, `plan_id`, `name`, `phone`, `dni`, `email`, `notes`, `start_date`, `end_date`, `uses_remaining`, `status` |
+| `usage_logs` | `id`, `subscriber_id`, `business_id`, `used_at`, `notes`, `deleted_at`, `delete_reason` — soft-delete: filtrar siempre con `.is('deleted_at', null)` |
 | `payments` | `id`, `subscriber_id`, `amount`, `paid_at`, `notes` |
 | `appointments` | `id`, `business_id`, `subscriber_id`, `slot_start`, `slot_end`, `client_name`, `client_dni`, `notes`, `status`, `use_logged`, `cancel_reason` |
 | `business_availability` | `id`, `business_id`, `days_of_week[]`, `start_time`, `end_time`, `slot_duration`, `advance_days`, `block_name`, `slot_capacity` — múltiples filas por negocio posibles |
-| `support_messages` | `id`, `business_id`, `message`, `created_at` |
+| `support_messages` | `id`, `user_id`, `business_name`, `email`, `category`, `message`, `created_at` — tabla legada, ya no se usa desde `/ayuda` (ver `doc/ayuda-contacto.md`) |
 
 ### RPC Functions (Supabase)
 
@@ -197,6 +197,7 @@ subsmanager/
 | `public_check_existing_booking(p_business_id, p_subscriber_id)` | Turno existente pendiente (sin auth) |
 | `public_cancel_appointment(p_appointment_id, p_subscriber_id)` | Cancela turno (sin auth) |
 | `public_book_appointment(...)` | Crea turno (sin auth) |
+| `delete_usage_log_atomic(p_log_id, p_business_id, p_delete_reason)` | Soft-delete de uso + restaura 1 uso al suscriptor + recalcula status, en una transacción atómica |
 
 ---
 
@@ -326,6 +327,7 @@ Edge functions en `supabase/functions/`:
 | Función | Descripción |
 |---------|-------------|
 | `create-subscription` | Crea un preapproval en MP para el tier elegido. `verify_jwt = false` en `config.toml` — valida el token internamente con `supabase.auth.getUser(token)`. Devuelve `init_point`. |
+| `cancel-subscription` | Cancela/degrada la suscripción. Acepta `action: 'to_free' | 'to_starter'` y `force: boolean`. Valida límites de datos antes de cambiar tier; con `force=true` elimina datos sobrantes (suscriptores newest-first + planes sin suscriptores). `verify_jwt = false`, valida internamente. |
 | `mp-webhook` | Recibe eventos de MP (`subscription_preapproval`), actualiza `tier` y `subscription_ends_at` en `businesses`. Verifica firma HMAC-SHA256 si `MP_WEBHOOK_SECRET` está configurado. |
 
 **`external_reference`:** Se envía como `"${tier}:${userId}"` (ej: `"starter:uuid"`). Permite al webhook identificar el negocio sin depender del email del pagador.
@@ -364,10 +366,30 @@ El webhook usa `service_role` para actualizar campos protegidos por RLS. Ver `do
 
 El campo `businesses.allow_guest_bookings` (boolean, default `false`) controla si personas sin suscripción activa pueden reservar turnos desde `/reservar/:slug`.
 
-- `false` (default): solo suscriptores pueden reservar. El botón "Reservar sin suscripción" no aparece en `PublicBooking`.
-- `true`: cualquier visitante puede reservar como invitado.
+- Actualmente **hardcodeado en `false`** por decisión de seguridad (2026-04-23): el toggle fue removido de Settings. Solo suscriptores con membresía activa pueden reservar.
+- El campo existe en DB pero no es modificable desde el frontend. El botón "Reservar sin suscripción" no aparece en `PublicBooking`.
+- **No reactivar** el toggle sin implementar verificación OTP o similar.
 
-El negocio lo controla desde Settings > Agenda y reservas > toggle "Reservas sin suscripción".
+---
+
+## Gestión de suscripción (Settings)
+
+Desde `/configuracion`, los usuarios pueden bajar de tier o solicitar eliminación de cuenta.
+
+**Botones visibles en "Mi suscripción"** (solo si `!is_promo` y `!isExpired`):
+- **Pro**: "Bajar al plan Starter" + "Darse de baja (pasar a Free)"
+- **Starter**: "Darse de baja (pasar a Free)"
+
+**Flujo de downgrade:**
+1. Settings lee los conteos actuales (`subscribers` y `plans`) vía Supabase con RLS.
+2. Si hay exceso para el tier destino, el modal muestra cuántos eliminar y ofrece: gestionar manualmente (link a `/suscriptores` o `/servicios`) o forzar eliminación automática.
+3. La edge function `cancel-subscription` valida nuevamente server-side antes de proceder.
+4. `to_free`: cancela MP + actualiza DB a tier='free' directamente + `window.location.reload()`.
+5. `to_starter`: cancela MP + crea nuevo preapproval → redirige a MP; el webhook actualiza el tier cuando el pago se procesa.
+
+**Eliminar cuenta:** botón "Solicitar eliminación de cuenta" en sección Cuenta → modal con email pre-llenado + motivo opcional → envía via `contact-form` edge function a hola@plane.ar.
+
+Ver detalle en `doc/gestion-suscripcion.md`.
 
 ---
 
@@ -392,4 +414,4 @@ Campo `businesses.is_promo boolean DEFAULT false` que permite otorgar acceso pro
 - WhatsApp / emails automáticos
 - Selección de ítems/combos en turnos (`appointment_items` — schema diseñado, no implementado)
 - App móvil nativa
-- Guest mode con verificación SMS OTP (pendiente cuando se reactive `allow_guest_bookings`)
+- Guest mode con verificación SMS OTP (`allow_guest_bookings` deshabilitado por seguridad)

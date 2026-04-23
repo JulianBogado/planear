@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useOutletContext } from 'react-router-dom'
 import { useToast } from '../context/ToastContext'
@@ -12,7 +12,7 @@ const FAQ_DATA = [
     category: 'Primeros pasos',
     items: [
       {
-        q: '¿Cómo creo mi primer servicio?',
+        q: '¿Cómo creo mi primer plan?',
         a: 'Andá a "Servicios" desde el menú inferior, tocá el botón "+ Nuevo servicio" y completá el nombre, precio, cantidad de usos incluidos y la duración en días. Por ejemplo: "Plan mensual – 4 clases – $60.000 – 30 días".',
       },
       {
@@ -33,7 +33,7 @@ const FAQ_DATA = [
         a: 'Sí, podés crear todos los planes que necesites. Cada cliente elige uno al momento de suscribirse. Podés tener, por ejemplo, un plan básico, uno intermedio y uno premium.',
       },
       {
-        q: '¿Cómo edito o elimino un servicio?',
+        q: '¿Cómo edito o elimino un plan?',
         a: 'En la sección "Servicios", tocá el ícono de lápiz o basura a la derecha del servicio para editarlo o eliminarlo.',
       },
     ],
@@ -43,7 +43,7 @@ const FAQ_DATA = [
     items: [
       {
         q: '¿Cómo registro un uso?',
-        a: 'En la lista de clientes, tocá "Registrar uso" debajo del nombre del cliente (o usá el menú de tres puntitos). También podés hacerlo desde la ficha individual del cliente con el botón correspondiente.',
+        a: 'En la lista de clientes, tocá "Registrar uso" debajo del nombre del cliente. También podés hacerlo desde la ficha individual del cliente con el botón correspondiente.',
       },
       {
         q: '¿Cómo renuevo una suscripción?',
@@ -51,7 +51,7 @@ const FAQ_DATA = [
       },
       {
         q: '¿Qué significa "Por vencer"?',
-        a: 'Un cliente está marcado como "Por vencer" cuando le quedan menos de 7 días para que se cumpla el vencimiento de su suscripción. Es una alerta temprana para que puedas coordinarte con ellos antes de que expire.',
+        a: 'Un cliente está marcado como "Por vencer" cuando le quedan menos de 7 días para que se cumpla el vencimiento de su suscripción. Es una alerta temprana para que puedas coordinar con ellos antes de que expire.',
       },
       {
         q: '¿Cómo veo el historial de un cliente?',
@@ -112,6 +112,8 @@ export default function Help() {
   const [category, setCategory] = useState('')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [startedAt] = useState(() => Date.now())
 
   function toggleItem(key) {
     setOpenItem(prev => prev === key ? null : key)
@@ -122,22 +124,28 @@ export default function Help() {
     if (!category) { showToast('Seleccioná una categoría', 'error'); return }
     if (!message.trim()) { showToast('Escribí tu mensaje', 'error'); return }
 
+    const categoryLabel = CONTACT_CATEGORIES.find(c => c.value === category)?.label ?? category
+    const fullMessage = `[${categoryLabel}]\n\n${message.trim()}`
+    const senderName = (business?.name?.trim().length >= 2)
+      ? business.name.trim()
+      : (user?.email ?? 'Usuario')
+
     setSending(true)
-    const { error } = await supabase.from('support_messages').insert({
-      user_id: user?.id,
-      business_name: business?.name ?? null,
-      email: user?.email ?? null,
-      category,
-      message: message.trim(),
+    const { error } = await supabase.functions.invoke('contact-form', {
+      body: {
+        name: senderName.slice(0, 120),
+        email: user?.email ?? '',
+        message: fullMessage,
+        website: '',
+        form_started_at: startedAt,
+      },
     })
     setSending(false)
 
     if (error) {
       showToast('Error al enviar. Intentá de nuevo.', 'error')
     } else {
-      showToast('Mensaje enviado, te respondemos pronto')
-      setCategory('')
-      setMessage('')
+      setSent(true)
     }
   }
 
@@ -198,45 +206,67 @@ export default function Help() {
       {/* Contacto */}
       {activeTab === 'contacto' && (
         <div className="space-y-4">
-          <div className="bg-surface rounded-3xl shadow-card p-5">
-            <h2 className="font-semibold text-stone-800 mb-1">Escribinos</h2>
-            <p className="text-xs text-stone-400 mb-5">
-              Te respondemos a tu email a la brevedad.
-            </p>
-
-            <form onSubmit={handleSend} className="space-y-4">
-              <div className="bg-surface-tint rounded-2xl px-4 py-3">
-                <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest mb-0.5">
-                  Email de respuesta
-                </p>
-                <p className="text-sm text-stone-700 font-medium">{user?.email}</p>
+          {sent ? (
+            <div className="bg-surface rounded-3xl shadow-card p-8 text-center space-y-4">
+              <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mx-auto animate-check-pop">
+                <CheckCircle2 size={44} className="text-emerald-500" />
               </div>
-
-              <Select
-                label="Motivo de contacto"
-                value={category}
-                onChange={e => setCategory(e.target.value)}
-                required
+              <div className="animate-fade-up" style={{ animationDelay: '0.2s' }}>
+                <h2 className="font-extrabold text-xl text-stone-900">¡Mensaje enviado!</h2>
+                <p className="text-sm text-stone-500 mt-1.5">
+                  Te respondemos a la brevedad a<br />
+                  <span className="font-medium text-stone-700">{user?.email}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => { setSent(false); setCategory(''); setMessage('') }}
+                className="text-xs text-stone-400 hover:text-stone-600 transition-colors animate-fade-up"
+                style={{ animationDelay: '0.35s' }}
               >
-                <option value="">Seleccioná una opción</option>
-                {CONTACT_CATEGORIES.map(c => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </Select>
+                Enviar otra consulta
+              </button>
+            </div>
+          ) : (
+            <div className="bg-surface rounded-3xl shadow-card p-5">
+              <h2 className="font-semibold text-stone-800 mb-1">Escribinos</h2>
+              <p className="text-xs text-stone-400 mb-5">
+                Te respondemos a tu email a la brevedad.
+              </p>
 
-              <Textarea
-                label="Mensaje"
-                value={message}
-                onChange={e => setMessage(e.target.value)}
-                placeholder="Contanos en qué podemos ayudarte..."
-                required
-              />
+              <form onSubmit={handleSend} className="space-y-4">
+                <div className="bg-surface-tint rounded-2xl px-4 py-3">
+                  <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest mb-0.5">
+                    Email de respuesta
+                  </p>
+                  <p className="text-sm text-stone-700 font-medium">{user?.email}</p>
+                </div>
 
-              <Button type="submit" loading={sending} className="w-full">
-                Enviar mensaje
-              </Button>
-            </form>
-          </div>
+                <Select
+                  label="Motivo de contacto"
+                  value={category}
+                  onChange={e => setCategory(e.target.value)}
+                  required
+                >
+                  <option value="">Seleccioná una opción</option>
+                  {CONTACT_CATEGORIES.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </Select>
+
+                <Textarea
+                  label="Mensaje"
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                  placeholder="Contanos en qué podemos ayudarte..."
+                  required
+                />
+
+                <Button type="submit" loading={sending} className="w-full">
+                  Enviar mensaje
+                </Button>
+              </form>
+            </div>
+          )}
         </div>
       )}
     </div>
