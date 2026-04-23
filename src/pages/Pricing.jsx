@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useBusiness } from '../hooks/useBusiness'
 import { supabase } from '../lib/supabase'
 import { TIER_INFO } from '../constants/tiers'
+import SEOHead from '../components/seo/SEOHead'
 
 const TIERS_ORDER = ['free', 'starter', 'pro']
 
@@ -54,6 +55,11 @@ export default function Pricing() {
 
   return (
     <div data-theme="celeste" className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
+      <SEOHead
+        title="Precios de PLANE.AR | Planes para gestionar suscripciones"
+        description="Conocé los precios de PLANE.AR y compará los planes disponibles para administrar suscripciones, pagos, renovaciones y turnos de tu negocio."
+        canonical="https://plane.ar/precios"
+      />
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-4 max-w-4xl mx-auto">
         <span className="font-extrabold text-xl tracking-tight" style={{ color: '#2785aa' }}>PLANE.AR</span>

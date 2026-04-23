@@ -11,6 +11,7 @@ import { usePlans } from '../hooks/usePlans'
 import { useSubscription } from '../hooks/useSubscription'
 import { useIsAdmin } from '../hooks/useIsAdmin'
 import { useAvailability } from '../hooks/useAvailability'
+import { supabase } from '../lib/supabase'
 import Button from '../components/ui/Button'
 import Input, { Select } from '../components/ui/Input'
 import Modal from '../components/ui/Modal'
@@ -33,7 +34,7 @@ export default function Settings() {
   const DEFAULT_BLOCK = { block_name: '', days_of_week: [1, 2, 3, 4, 5], start_time: '09:00', end_time: '18:00', slot_duration: 60, slot_capacity: 1, simple_shift: false }
 
   const [agendaEnabled, setAgendaEnabled] = useState(true)
-  const [allowGuestBookings, setAllowGuestBookings] = useState(false)
+
   const [agendaBlocks, setAgendaBlocks] = useState([{ ...DEFAULT_BLOCK }])
   const [agendaAdvance, setAgendaAdvance] = useState(7)
   const [savingAgenda, setSavingAgenda] = useState(false)
@@ -56,6 +57,22 @@ export default function Settings() {
   const [savingContact, setSavingContact] = useState(false)
   const [error, setError] = useState('')
 
+  // Conteos de datos (para validar downgrade)
+  const [subscriberCount, setSubscriberCount] = useState(null)
+  const [planCount, setPlanCount] = useState(null)
+
+  // Gestión de suscripción
+  const [confirmDowngradeOpen, setConfirmDowngradeOpen] = useState(false)
+  const [downgradeTo, setDowngradeTo] = useState(null)
+  const [subscriptionActionLoading, setSubscriptionActionLoading] = useState(false)
+
+  // Eliminar cuenta
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
+  const [deleteAccountStartedAt, setDeleteAccountStartedAt] = useState(null)
+  const [deleteReason, setDeleteReason] = useState('')
+  const [deleteSent, setDeleteSent] = useState(false)
+  const [deleteSending, setDeleteSending] = useState(false)
+
   // Flujo cambio de rubro
   const [pendingCategory, setPendingCategory] = useState(null)
   const [confirmRubroOpen, setConfirmRubroOpen] = useState(false)
@@ -73,7 +90,7 @@ export default function Settings() {
       setTiktok(business.tiktok ?? '')
       setSlug(business.slug ?? null)
       setAgendaEnabled(business.agenda_enabled !== false)
-      setAllowGuestBookings(business.allow_guest_bookings === true)
+
       syncFromBusiness(business)
     }
   }, [business])
@@ -91,6 +108,85 @@ export default function Settings() {
       setAgendaAdvance(availability[0].advance_days ?? 7)
     }
   }, [availability])
+
+  useEffect(() => {
+    if (!business?.id) return
+    supabase
+      .from('subscribers')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', business.id)
+      .then(({ count }) => setSubscriberCount(count ?? 0))
+    supabase
+      .from('plans')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', business.id)
+      .then(({ count }) => setPlanCount(count ?? 0))
+  }, [business?.id])
+
+  function openDowngrade(targetTier) {
+    setDowngradeTo(targetTier)
+    setConfirmDowngradeOpen(true)
+  }
+
+  async function handleConfirmDowngrade(force = false) {
+    setSubscriptionActionLoading(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    const action = downgradeTo === 'starter' ? 'to_starter' : 'to_free'
+
+    const { data, error: fnError } = await supabase.functions.invoke('cancel-subscription', {
+      body: { action, force },
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+
+    setSubscriptionActionLoading(false)
+
+    if (fnError) {
+      showToast('Ocurrió un error. Intentá de nuevo.', 'error')
+      return
+    }
+
+    if (data?.error === 'over_limit' && !force) {
+      return
+    }
+
+    setConfirmDowngradeOpen(false)
+
+    if (action === 'to_free') {
+      showToast('Suscripción cancelada')
+      window.location.reload()
+    } else {
+      const url = data?.init_point
+      if (
+        !url?.startsWith('https://www.mercadopago.com.ar/') &&
+        !url?.startsWith('https://sandbox.mercadopago.com.ar/')
+      ) {
+        showToast('Error: URL de pago inválida.', 'error')
+        return
+      }
+      window.location.href = url
+    }
+  }
+
+  async function handleDeleteAccountRequest(e) {
+    e.preventDefault()
+    setDeleteSending(true)
+    const autoMessage =
+      `Solicito la eliminación de mi cuenta.\n\nEmail: ${user?.email}\nNegocio: ${business?.name ?? '—'}\nPlan: ${business?.tier ?? 'free'}` +
+      (deleteReason ? `\n\nMotivo: ${deleteReason}` : '')
+
+    const { error: fnError } = await supabase.functions.invoke('contact-form', {
+      body: {
+        name: business?.name ?? user?.email ?? 'Usuario',
+        email: user?.email,
+        message: autoMessage,
+        website: '',
+        form_started_at: deleteAccountStartedAt,
+      },
+    })
+    setDeleteSending(false)
+    if (fnError) { showToast('No se pudo enviar. Intentá de nuevo.', 'error'); return }
+    setDeleteSent(true)
+  }
 
   async function handleSaveBusiness(e) {
     e.preventDefault()
@@ -140,12 +236,6 @@ export default function Settings() {
     showToast(next ? 'Reservas online activadas' : 'Reservas online desactivadas')
   }
 
-  async function handleToggleGuestBookings() {
-    const next = !allowGuestBookings
-    setAllowGuestBookings(next)
-    await updateBusiness(business.id, { allow_guest_bookings: next })
-    showToast(next ? 'Reservas sin suscripción activadas' : 'Reservas sin suscripción desactivadas')
-  }
 
   async function handleSaveAgenda(e) {
     e.preventDefault()
@@ -455,6 +545,17 @@ export default function Settings() {
                 <Link to="/precios" className="text-xs font-semibold text-brand-600 hover:text-brand-700">
                   Ver todos los planes →
                 </Link>
+                {tier === 'pro' && (
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => openDowngrade('starter')}>
+                    Bajar al plan Starter
+                  </Button>
+                )}
+                <button
+                  onClick={() => openDowngrade('free')}
+                  className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors block"
+                >
+                  Darse de baja (pasar a Free)
+                </button>
               </div>
             )}
           </div>
@@ -485,20 +586,6 @@ export default function Settings() {
 
           {agendaEnabled && <>
           <p className="text-xs text-stone-400 mb-4">Configurá tu disponibilidad para que tus clientes puedan reservar online</p>
-
-          {/* Toggle guest bookings */}
-          <div className="flex items-center justify-between mb-5 bg-surface-tint rounded-2xl px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-stone-700">Reservas sin suscripción</p>
-              <p className="text-xs text-stone-400">Permitir que personas sin membresía activa reserven turnos</p>
-            </div>
-            <button
-              onClick={handleToggleGuestBookings}
-              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${allowGuestBookings ? 'bg-brand-600' : 'bg-stone-200'}`}
-            >
-              <span className={`block w-5 h-5 bg-white rounded-full shadow transition-transform absolute top-0.5 ${allowGuestBookings ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </button>
-          </div>
 
           {/* URL pública */}
           <div className="bg-surface-tint rounded-2xl px-4 py-3 mb-4">
@@ -700,7 +787,148 @@ export default function Settings() {
         <h2 className="font-semibold text-stone-800 mb-1">Cuenta</h2>
         <p className="text-sm text-stone-400 mb-4">{user?.email}</p>
         <Button variant="outline" onClick={signOut}>Cerrar sesión</Button>
+        <button
+          onClick={() => {
+            setDeleteAccountOpen(true)
+            setDeleteAccountStartedAt(Date.now())
+            setDeleteSent(false)
+            setDeleteReason('')
+          }}
+          className="mt-3 text-xs font-semibold text-red-500 hover:text-red-700 transition-colors block"
+        >
+          Solicitar eliminación de cuenta
+        </button>
       </div>
+
+      {/* Modal downgrade de suscripción */}
+      <Modal
+        open={confirmDowngradeOpen}
+        onClose={() => setConfirmDowngradeOpen(false)}
+        title={downgradeTo === 'starter' ? 'Bajar al plan Starter' : 'Darse de baja'}
+      >
+        {(() => {
+          const newLimits = downgradeTo === 'starter'
+            ? { maxSubscribers: 15, maxPlans: 3 }
+            : { maxSubscribers: 5,  maxPlans: 2 }
+          const excessSubs  = Math.max(0, (subscriberCount ?? 0) - newLimits.maxSubscribers)
+          const excessPlans = Math.max(0, (planCount ?? 0) - newLimits.maxPlans)
+          const hasExcess   = excessSubs > 0 || excessPlans > 0
+
+          return (
+            <>
+              <p className="text-sm text-stone-600 mb-3">
+                {downgradeTo === 'starter'
+                  ? 'Pasás de Pro a Starter ($16.900/mes). Perdés acceso a estadísticas y agenda.'
+                  : 'Tu plan pasa a Free. Perdés todas las funciones pagas.'}
+              </p>
+
+              {hasExcess && (
+                <div className="bg-amber-50 rounded-2xl px-4 py-3 mb-4 text-xs text-amber-800 space-y-1">
+                  <p className="font-semibold">⚠️ Tenés datos que superan el límite del nuevo plan:</p>
+                  {excessSubs > 0 && (
+                    <p>• {subscriberCount} clientes (límite: {newLimits.maxSubscribers}) — eliminá {excessSubs}</p>
+                  )}
+                  {excessPlans > 0 && (
+                    <p>• {planCount} planes (límite: {newLimits.maxPlans}) — eliminá {excessPlans}</p>
+                  )}
+                </div>
+              )}
+
+              {hasExcess ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    {excessSubs > 0 && (
+                      <Link to="/suscriptores" className="flex-1" onClick={() => setConfirmDowngradeOpen(false)}>
+                        <Button variant="outline" size="sm" className="w-full">Gestionar clientes</Button>
+                      </Link>
+                    )}
+                    {excessPlans > 0 && (
+                      <Link to="/servicios" className="flex-1" onClick={() => setConfirmDowngradeOpen(false)}>
+                        <Button variant="outline" size="sm" className="w-full">Gestionar planes</Button>
+                      </Link>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleConfirmDowngrade(true)}
+                    disabled={subscriptionActionLoading}
+                    className="w-full text-xs font-semibold text-red-500 hover:text-red-700 disabled:opacity-50 transition-colors py-2"
+                  >
+                    {subscriptionActionLoading
+                      ? 'Procesando...'
+                      : `O bajar de igual manera (PLANE.AR eliminará los ${excessSubs + excessPlans} datos sobrantes)`}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setConfirmDowngradeOpen(false)} className="flex-1">
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant={downgradeTo === 'starter' ? 'primary' : 'danger'}
+                    loading={subscriptionActionLoading}
+                    onClick={() => handleConfirmDowngrade(false)}
+                    className="flex-1"
+                  >
+                    {downgradeTo === 'starter' ? 'Ir a pagar Starter' : 'Confirmar baja'}
+                  </Button>
+                </div>
+              )}
+            </>
+          )
+        })()}
+      </Modal>
+
+      {/* Modal eliminar cuenta */}
+      <Modal
+        open={deleteAccountOpen}
+        onClose={() => { setDeleteAccountOpen(false); setDeleteSent(false) }}
+        title="Eliminar cuenta"
+      >
+        {deleteSent ? (
+          <div className="text-center py-4 space-y-2">
+            <p className="text-sm font-semibold text-stone-800">Solicitud enviada</p>
+            <p className="text-xs text-stone-500">
+              Te contactamos en 48 hs hábiles para confirmar la eliminación.
+            </p>
+            <Button variant="outline" onClick={() => { setDeleteAccountOpen(false); setDeleteSent(false) }} className="w-full mt-2">
+              Cerrar
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleDeleteAccountRequest} className="space-y-4">
+            <p className="text-sm text-stone-600">
+              Nuestro equipo elimina tu cuenta y todos tus datos dentro de las 48 hs hábiles.
+            </p>
+            <div className="bg-surface-tint rounded-2xl px-4 py-3">
+              <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest mb-0.5">Email de la cuenta</p>
+              <p className="text-sm font-medium text-stone-700">{user?.email}</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-stone-500 mb-1.5 block">Motivo (opcional)</label>
+              <textarea
+                rows={3}
+                value={deleteReason}
+                onChange={e => setDeleteReason(e.target.value)}
+                placeholder="Podés contarnos por qué si querés…"
+                className="w-full bg-surface-tint border-0 border-b-2 border-stone-200 focus:border-red-400 rounded-t-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-0 transition-colors placeholder:text-stone-400"
+              />
+            </div>
+            <div className="bg-red-50 rounded-2xl px-4 py-2.5">
+              <p className="text-xs text-red-700 font-medium">
+                Acción irreversible. Se eliminan tu cuenta, clientes, planes y todos los datos del negocio.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" type="button" onClick={() => setDeleteAccountOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button variant="danger" type="submit" loading={deleteSending} className="flex-1">
+                Enviar solicitud
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       {/* Modal confirmación cambio de rubro */}
       <Modal open={confirmRubroOpen} onClose={() => setConfirmRubroOpen(false)} title="Cambiar rubro">

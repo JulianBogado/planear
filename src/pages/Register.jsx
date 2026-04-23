@@ -75,7 +75,7 @@ export default function Register() {
   if (registered) {
     return (
       <div data-theme="celeste" className="min-h-screen flex" style={{ backgroundColor: 'var(--bg)' }}>
-        <SEOHead title="Crear cuenta — PLANE.AR" description="" canonical="https://plane.ar/register" noIndex={true} />
+        <SEOHead title="Crear cuenta — PLANE.AR" canonical="https://plane.ar/register" noIndex={true} />
         {brandPanel}
         <div className="flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-sm text-center">

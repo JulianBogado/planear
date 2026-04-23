@@ -6,6 +6,7 @@ import { Clock, CheckCircle2, AlertCircle, UserCheck, User } from 'lucide-react'
 import { usePublicAvailability, getAvailableSlots } from '../hooks/useAppointments'
 import MiniCalendar from '../components/ui/MiniCalendar'
 import Button from '../components/ui/Button'
+import SEOHead from '../components/seo/SEOHead'
 
 const STEPS = { DNI: 0, WARN: 1, DATE: 2, SLOT: 3, FORM: 4, SUCCESS: 5, EXPIRED: 6 }
 
@@ -177,6 +178,11 @@ export default function PublicBooking() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#faf8f5' }}>
+      <SEOHead
+        title={`Reservas online${business?.name ? ` | ${business.name}` : ''} | PLANE.AR`}
+        description="Reservas online para clientes de negocios que usan PLANE.AR."
+        noIndex={true}
+      />
       <div className="max-w-md mx-auto px-4 py-10">
 
         {/* Brand */}
