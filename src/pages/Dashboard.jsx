@@ -1,4 +1,5 @@
 import { useNavigate, useOutletContext } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Users, CalendarDays } from 'lucide-react'
@@ -6,6 +7,8 @@ import { useSubscribers } from '../hooks/useSubscribers'
 import { useWeekAppointments } from '../hooks/useAppointments'
 import { useSubscription } from '../hooks/useSubscription'
 import { useIsAdmin } from '../hooks/useIsAdmin'
+import { useToast } from '../context/ToastContext'
+import { supabase } from '../lib/supabase'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
 import { StatsSkeleton, SubscriberCardSkeleton } from '../components/ui/Skeleton'
@@ -14,10 +17,69 @@ import { StatusBadge } from '../components/ui/StatusBadge'
 export default function Dashboard() {
   const navigate = useNavigate()
   const { business } = useOutletContext()
+  const { showToast } = useToast()
   const { subscribers, loading } = useSubscribers(business?.id)
   const isSuperuser = useIsAdmin()
-  const { canReserve } = useSubscription(business)
+  const { canReserve, effectiveTier } = useSubscription(business)
   const showAgenda = (canReserve || isSuperuser) && business?.agenda_enabled !== false
+  const [verifyingSubscription, setVerifyingSubscription] = useState(false)
+  const [verificationMessage, setVerificationMessage] = useState('')
+  const [verificationError, setVerificationError] = useState('')
+
+  useEffect(() => {
+    const message = sessionStorage.getItem('post_downgrade_notice')
+    if (!message) return
+
+    showToast(message)
+    sessionStorage.removeItem('post_downgrade_notice')
+  }, [showToast])
+
+  useEffect(() => {
+    async function verifySubscription() {
+      if (!business?.id || effectiveTier === 'pro' || verifyingSubscription) return
+
+      const pendingCheckout = sessionStorage.getItem('mp_checkout_pending') === 'true'
+      if (pendingCheckout) {
+        setVerificationMessage('Estamos verificando tu pago. Esto puede tardar hasta un minuto.')
+        setVerificationError('')
+        sessionStorage.removeItem('mp_checkout_pending')
+      }
+
+      setVerifyingSubscription(true)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+
+        const attempts = pendingCheckout ? 8 : 1
+        let synced = false
+
+        for (let attempt = 0; attempt < attempts; attempt += 1) {
+          const { data, error } = await supabase.functions.invoke('verify-subscription', {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          })
+
+          if (!error && data?.business?.tier && data.business.tier !== business.tier) {
+            synced = true
+            window.location.reload()
+            return
+          }
+
+          if (attempt < attempts - 1) {
+            await new Promise(resolve => setTimeout(resolve, 5000))
+          }
+        }
+
+        if (pendingCheckout && !synced) {
+          setVerificationMessage('')
+          setVerificationError('Recibimos tu pago, pero la activacion esta demorando mas de lo normal. Actualiza en un minuto o entra a Configuracion.')
+        }
+      } finally {
+        setVerifyingSubscription(false)
+      }
+    }
+
+    verifySubscription()
+  }, [business?.id, business?.tier, effectiveTier, verifyingSubscription])
 
   const todayDate = new Date()
   const todayStr    = format(todayDate, 'yyyy-MM-dd')
@@ -51,7 +113,30 @@ export default function Dashboard() {
       {/* Greeting */}
       <div>
         <h1 className="font-extrabold text-4xl text-stone-900 leading-tight">Hola</h1>
-        {business && <p className="text-brand-600 font-semibold text-base mt-0.5">{business.name}</p>}
+        {business && (
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className="text-brand-600 font-semibold text-base">{business.name}</p>
+            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+              effectiveTier === 'pro'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : effectiveTier === 'starter'
+                ? 'bg-sky-50 text-sky-700 border border-sky-200'
+                : 'bg-stone-100 text-stone-600 border border-stone-200'
+            }`}>
+              {effectiveTier}
+            </span>
+          </div>
+        )}
+        {verificationMessage && (
+          <div className="mt-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800 max-w-xl">
+            {verificationMessage}
+          </div>
+        )}
+        {verificationError && (
+          <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 max-w-xl">
+            {verificationError}
+          </div>
+        )}
       </div>
 
       {/* Stats — editorial */}

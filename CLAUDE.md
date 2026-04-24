@@ -178,7 +178,7 @@ subsmanager/
 | Tabla | Campos clave |
 |-------|-------------|
 | `profiles` | `id` (= `auth.users.id`), `nombre`, `apellido`, `telefono`, `created_at` — creada automáticamente por trigger `on_auth_user_created` al registrarse |
-| `businesses` | `id`, `user_id`, `name`, `category`, `tier`, `theme`, `slug`, `phone`, `instagram`, `facebook`, `tiktok`, `address`, `agenda_enabled`, `mp_subscription_id`, `mp_status`, `subscription_ends_at` |
+| `businesses` | `id`, `user_id`, `name`, `category`, `tier`, `theme`, `slug`, `phone`, `instagram`, `facebook`, `tiktok`, `address`, `agenda_enabled`, `mp_subscription_id`, `mp_status`, `subscription_ends_at`, `pending_tier` (hint UI de downgrade programado, no controla acceso real) |
 | `plans` | `id`, `business_id`, `name`, `description`, `price`, `total_uses`, `duration_days`, `is_template`, `items` (text[]) |
 | `subscribers` | `id`, `business_id`, `plan_id`, `name`, `phone`, `dni`, `email`, `notes`, `start_date`, `end_date`, `uses_remaining`, `status` |
 | `usage_logs` | `id`, `subscriber_id`, `business_id`, `used_at`, `notes`, `deleted_at`, `delete_reason` — soft-delete: filtrar siempre con `.is('deleted_at', null)` |
@@ -260,7 +260,7 @@ El campo `businesses.tier` controla las features disponibles:
 |------|--------|-------------|--------|-------|-------|--------|
 | free | $0 | 5 | 2 | ✗ | ✗ | ✗ |
 | starter | $16.900/mes | 15 | 3 | ✓ | ✗ | ✗ |
-| pro | $22.900/mes | ∞ | ∞ | ✓ | ✓ | ✓ |
+| pro | $2.900/mes | ∞ | ∞ | ✓ | ✓ | ✓ |
 
 Usar `useSubscription(business)` para chequear permisos en componentes.
 
@@ -275,13 +275,13 @@ Los límites de tier se aplican en dos capas: frontend (`useSubscription`) + DB 
 | `get_effective_tier(business_id)` | Devuelve el tier real considerando `subscription_ends_at` (si venció → 'free') |
 | `can_add_subscriber(business_id)` | `true` si el negocio puede agregar un suscriptor más según su tier |
 | `can_add_plan(business_id)` | `true` si el negocio puede agregar un plan más según su tier |
-| `_tier_fields_unchanged(id, tier, ends_at, mp_sub_id, mp_status)` | Helper para la policy de UPDATE en businesses |
+| `_tier_fields_unchanged(id, tier, ends_at, mp_sub_id, mp_status, pending_tier)` | Helper para la policy de UPDATE en businesses — protege también `pending_tier` |
 
 **Políticas RESTRICTIVE:**
 
 | Tabla | Política | Qué bloquea |
 |-------|----------|-------------|
-| `businesses` | `businesses_protect_tier_fields` | UPDATE de `tier`, `subscription_ends_at`, `mp_subscription_id`, `mp_status` por usuarios no-admin |
+| `businesses` | `businesses_protect_tier_fields` | UPDATE de `tier`, `subscription_ends_at`, `mp_subscription_id`, `mp_status`, `pending_tier` por usuarios no-admin |
 | `subscribers` | `subscribers_insert_tier_limit` | INSERT cuando se supera el límite del tier |
 | `plans` | `plans_insert_tier_limit` | INSERT cuando se supera el límite del tier |
 
@@ -327,8 +327,9 @@ Edge functions en `supabase/functions/`:
 | Función | Descripción |
 |---------|-------------|
 | `create-subscription` | Crea un preapproval en MP para el tier elegido. `verify_jwt = false` en `config.toml` — valida el token internamente con `supabase.auth.getUser(token)`. Devuelve `init_point`. |
-| `cancel-subscription` | Cancela/degrada la suscripción. Acepta `action: 'to_free' | 'to_starter'` y `force: boolean`. Valida límites de datos antes de cambiar tier; con `force=true` elimina datos sobrantes (suscriptores newest-first + planes sin suscriptores). `verify_jwt = false`, valida internamente. |
-| `mp-webhook` | Recibe eventos de MP (`subscription_preapproval`), actualiza `tier` y `subscription_ends_at` en `businesses`. Verifica firma HMAC-SHA256 si `MP_WEBHOOK_SECRET` está configurado. |
+| `cancel-subscription` | Programa el downgrade de suscripción. Acepta `action: 'to_free' \| 'to_starter'` y `force: boolean`. Para `to_starter`: hace `PUT` al preapproval MP con nuevo monto ($16.900) y `external_reference: "starter:userId"`, guarda `pending_tier='starter'`. Para `to_free`: cancela MP, guarda `pending_tier='free'` (conserva tier y `subscription_ends_at`). Devuelve `{ ok: true, scheduledFor }`. Si `mp_subscription_id=null`, aplica el cambio inmediato. `verify_jwt=false`, valida internamente. |
+| `mp-webhook` | Recibe eventos de MP (`subscription_preapproval`), actualiza `tier`, `subscription_ends_at` y limpia `pending_tier=null` en `businesses`. Verifica firma HMAC-SHA256 si `MP_WEBHOOK_SECRET` está configurado. |
+| `verify-subscription` | Fallback server-side para reconciliar el tier con Mercado Pago cuando el cobro se hizo pero el webhook no impactó la base. Busca la suscripción vigente y actualiza `tier`, `mp_status`, `mp_subscription_id` y `subscription_ends_at`. |
 
 **`external_reference`:** Se envía como `"${tier}:${userId}"` (ej: `"starter:uuid"`). Permite al webhook identificar el negocio sin depender del email del pagador.
 
@@ -346,7 +347,7 @@ Edge functions en `supabase/functions/`:
 | `MP_PLAN_STARTER_ID` | No | ID de plan MP (mapeo legacy) |
 | `MP_PLAN_PRO_ID` | No | ID de plan MP (mapeo legacy) |
 
-El webhook usa `service_role` para actualizar campos protegidos por RLS. Ver `doc/integracion-mercadopago.md` para detalle completo.
+El webhook usa `service_role` para actualizar campos protegidos por RLS. Ver `doc/integracion-mercadopago.md` para la arquitectura y `doc/mercadopago-sandbox-e2e.md` para el checklist de prueba sandbox.
 
 ---
 
@@ -376,20 +377,26 @@ El campo `businesses.allow_guest_bookings` (boolean, default `false`) controla s
 
 Desde `/configuracion`, los usuarios pueden bajar de tier o solicitar eliminación de cuenta.
 
-**Botones visibles en "Mi suscripción"** (solo si `!is_promo` y `!isExpired`):
-- **Pro**: "Bajar al plan Starter" + "Darse de baja (pasar a Free)"
-- **Starter**: "Darse de baja (pasar a Free)"
+**Botones visibles en "Mi suscripción"** (solo si `!is_promo`, `!isExpired` y `!business.pending_tier`):
+- **Pro**: "Bajar al plan Starter" + "Pasar a Free"
+- **Starter**: "Pasar a Free"
 
-**Flujo de downgrade:**
+Si `business.pending_tier` existe, se ocultan los botones y se muestra un banner: _"Disfrutás del plan Pro hasta el [fecha]. Luego pasás al plan Starter."_
+
+**Flujo de downgrade (scheduled):**
 1. Settings lee los conteos actuales (`subscribers` y `plans`) vía Supabase con RLS.
-2. Si hay exceso para el tier destino, el modal muestra cuántos eliminar y ofrece: gestionar manualmente (link a `/suscriptores` o `/servicios`) o forzar eliminación automática.
-3. La edge function `cancel-subscription` valida nuevamente server-side antes de proceder.
-4. `to_free`: cancela MP + actualiza DB a tier='free' directamente + `window.location.reload()`.
-5. `to_starter`: cancela MP + crea nuevo preapproval → redirige a MP; el webhook actualiza el tier cuando el pago se procesa.
+2. Si hay exceso para el tier destino, el modal muestra cuántos eliminar y ofrece: gestionar manualmente o forzar eliminación automática (ocurre al momento de la solicitud, no al vencimiento).
+3. La edge function `cancel-subscription` valida server-side y programa el cambio:
+   - `to_starter`: `PUT` al preapproval MP con monto $16.900 y `external_reference: "starter:userId"`, guarda `pending_tier='starter'`. Tier real cambia cuando MP cobra el siguiente ciclo y el webhook lo procesa.
+   - `to_free`: cancela MP, guarda `pending_tier='free'`. Tier real cae a 'free' automáticamente cuando `subscription_ends_at` vence (`get_effective_tier`).
+4. UI hace `window.location.reload()` para mostrar el banner de cambio programado.
+5. Si `mp_subscription_id=null` (tier manual): el cambio se aplica de inmediato, sin `scheduledFor`.
+
+**`pending_tier`:** campo `text DEFAULT NULL` en `businesses`. Solo hint de UI — no otorga acceso. Protegido por RLS (`businesses_protect_tier_fields`); solo modificable vía `service_role`. El webhook lo limpia (`pending_tier=null`) al procesar el primer pago del nuevo tier.
 
 **Eliminar cuenta:** botón "Solicitar eliminación de cuenta" en sección Cuenta → modal con email pre-llenado + motivo opcional → envía via `contact-form` edge function a hola@plane.ar.
 
-Ver detalle en `doc/gestion-suscripcion.md`.
+Ver detalle en `doc/gestion-suscripcion.md` y `doc/scheduled-downgrade.md`.
 
 ---
 
@@ -408,6 +415,75 @@ Campo `businesses.is_promo boolean DEFAULT false` que permite otorgar acceso pro
 - Ver detalle en `doc/promo-access.md` y `doc/admin-panel-v2.md`.
 
 ---
+
+## Estado canonico actual - Suscripciones y Mercado Pago
+
+> Esta seccion reemplaza cualquier nota historica anterior de Mercado Pago, sandbox o downgrade que haya quedado mas arriba en este archivo.
+
+### Backend
+
+- `create-subscription`
+  - Crea el `preapproval` de Mercado Pago para `starter` o `pro`.
+  - Usa `external_reference: "${tier}:${userId}"`.
+  - Usa `notification_url` apuntando a `.../functions/v1/mp-webhook`.
+  - Persiste `mp_subscription_id` y `mp_status` en `businesses` apenas MP responde.
+  - El contrato vigente devuelve `{ init_point, preapproval_id, mp_status }`.
+  - Hoy el precio de `pro` esta temporalmente en `$2.900` para pruebas reales de cobro. Debe revisarse antes del merge final a produccion.
+
+- `mp-webhook`
+  - Procesa `subscription_preapproval` y `subscription_authorized_payment`.
+  - Si `MP_WEBHOOK_SECRET` existe, valida la firma HMAC antes de procesar.
+  - Consulta siempre el recurso real en MP antes de actualizar la base.
+  - Actualiza `mp_status`, `mp_subscription_id`, `tier`, `subscription_ends_at` y limpia `pending_tier` cuando corresponde.
+  - Ignora eventos viejos si el negocio ya quedo vinculado a una suscripcion mas nueva o en mejor estado.
+
+- `verify-subscription`
+  - Es el fallback oficial de reconciliacion.
+  - Se usa cuando el cobro ya se hizo pero el webhook todavia no impacto `businesses`.
+  - Busca primero por `mp_subscription_id` y luego por la suscripcion mas reciente asociada al usuario.
+  - Si encuentra una suscripcion vigente `authorized`, sincroniza `tier`, `mp_status`, `mp_subscription_id`, `subscription_ends_at` y `pending_tier`.
+
+- `cancel-subscription`
+  - Gestiona el downgrade programado a `starter` o `free`.
+  - Para `to_starter` actualiza el preapproval existente y deja `pending_tier='starter'`.
+  - Para `to_free` cancela la suscripcion en MP, deja `pending_tier='free'` y conserva acceso hasta `subscription_ends_at`.
+  - Si el negocio no tiene `mp_subscription_id`, aplica el cambio de inmediato.
+  - Envia email transaccional de confirmacion; si el envio falla, la operacion no se revierte.
+
+### Frontend
+
+- `AppLayout.jsx`
+  - Muestra el badge del plan actual en el navbar/header.
+  - `pro` usa badge dorado, `starter` plateado y `free` neutro.
+  - Si el usuario vuelve del checkout con reconciliacion pendiente, muestra `Verificando pago...` en el header.
+
+- `Pricing.jsx`
+  - Inicia el checkout y guarda `sessionStorage.mp_checkout_pending`.
+  - Al volver del checkout muestra estado de verificacion y hace polling corto a `verify-subscription`.
+
+- `Dashboard.jsx`
+  - Tambien dispara reconciliacion cuando hay un checkout pendiente.
+  - Muestra feedback de verificacion si el pago ya se hizo pero el tier aun no se reflejo.
+
+- `Settings.jsx`
+  - Muestra el banner de cambio programado cuando existe `pending_tier`.
+  - Al confirmar una baja muestra feedback inmediato y luego recarga.
+  - Guarda `post_downgrade_notice` para mostrar el toast en la siguiente carga.
+
+### Secrets y dependencias operativas
+
+- `MP_ACCESS_TOKEN` es obligatorio.
+- `MP_WEBHOOK_SECRET` es opcional en desarrollo, pero recomendado en produccion.
+- `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` son obligatorios para las edge functions.
+- `RESEND_API_KEY` y `CONTACT_FROM_EMAIL` son necesarios para el email transaccional de baja.
+
+### Documentacion relacionada
+
+- `doc/integracion-mercadopago.md`
+- `doc/mercadopago-sandbox-e2e.md`
+- `doc/reconciliacion-suscripcion.md`
+- `doc/scheduled-downgrade.md`
+- `doc/pago-real-prueba-2900.md`
 
 ## Analytics (GA4)
 

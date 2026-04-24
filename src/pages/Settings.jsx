@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Pencil, Check, Camera, Globe, Music2, Phone, MapPin, ChevronRight, CalendarDays, Copy, CheckCheck, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -73,6 +73,8 @@ export default function Settings() {
   const [confirmDowngradeOpen, setConfirmDowngradeOpen] = useState(false)
   const [downgradeTo, setDowngradeTo] = useState(null)
   const [subscriptionActionLoading, setSubscriptionActionLoading] = useState(false)
+  const [downgradeFeedback, setDowngradeFeedback] = useState('')
+  const downgradeReloadTimeoutRef = useRef(null)
 
   // Eliminar cuenta
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
@@ -131,6 +133,33 @@ export default function Settings() {
       .then(({ count }) => setPlanCount(count ?? 0))
   }, [business?.id])
 
+  useEffect(() => {
+    async function verifySubscription() {
+      if (!business?.id || business?.tier === 'pro') return
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const { data, error } = await supabase.functions.invoke('verify-subscription', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+
+      if (!error && data?.business?.tier && data.business.tier !== business.tier) {
+        window.location.reload()
+      }
+    }
+
+    verifySubscription()
+  }, [business?.id, business?.tier])
+
+  useEffect(() => {
+    return () => {
+      if (downgradeReloadTimeoutRef.current) {
+        clearTimeout(downgradeReloadTimeoutRef.current)
+      }
+    }
+  }, [])
+
   function openDowngrade(targetTier) {
     setDowngradeTo(targetTier)
     setConfirmDowngradeOpen(true)
@@ -158,21 +187,20 @@ export default function Settings() {
     }
 
     setConfirmDowngradeOpen(false)
-
-    if (action === 'to_free') {
-      showToast('Suscripción cancelada')
-      window.location.reload()
-    } else {
-      const url = data?.init_point
-      if (
-        !url?.startsWith('https://www.mercadopago.com.ar/') &&
-        !url?.startsWith('https://sandbox.mercadopago.com.ar/')
-      ) {
-        showToast('Error: URL de pago inválida.', 'error')
-        return
-      }
-      window.location.href = url
-    }
+    sessionStorage.setItem(
+      'post_downgrade_notice',
+      downgradeTo === 'starter'
+        ? 'Cambio a Starter programado'
+        : 'Suscripción cancelada. Seguís con acceso hasta la fecha de vencimiento.'
+    )
+    showToast(downgradeTo === 'starter' ? 'Cambio a Starter programado' : 'Suscripción cancelada')
+    setDowngradeFeedback(
+      downgradeTo === 'starter'
+        ? 'Cambio a Starter programado. Estamos actualizando tu suscripciÃ³n.'
+        : 'SuscripciÃ³n cancelada. Estamos actualizando tu plan.'
+    )
+    await new Promise(resolve => setTimeout(resolve, 1400))
+    window.location.reload()
   }
 
   async function handleDeleteAccountRequest(e) {
@@ -519,9 +547,22 @@ export default function Settings() {
               {tier === 'free'
                 ? 'Hasta 5 clientes · 2 planes · Sin cartelería ni estadísticas'
                 : tier === 'starter'
-                ? 'Hasta 50 clientes · Hasta 3 planes · Cartelería incluida'
+                ? 'Hasta 15 clientes · 3 planes · Cartelería incluida'
                 : 'Clientes ilimitados · Todo incluido'}
             </p>
+            {downgradeFeedback && (
+              <div className="mb-4 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800 shadow-sm transition-all duration-300">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white animate-pulse">
+                    <Check size={14} />
+                  </span>
+                  <div className="space-y-1">
+                    <p className="font-semibold">Cambio confirmado</p>
+                    <p className="text-brand-700">{downgradeFeedback}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             {business.is_promo ? (
               <div className="space-y-2">
                 {business.subscription_ends_at && (
@@ -545,25 +586,36 @@ export default function Settings() {
               </div>
             ) : (
               <div className="space-y-2">
-                {business.subscription_ends_at && (
-                  <p className="text-xs text-stone-400">
-                    Próximo cobro: {new Date(business.subscription_ends_at).toLocaleDateString('es-AR')}
-                  </p>
+                {business.pending_tier ? (
+                  <div className="bg-amber-50 rounded-2xl px-4 py-3 text-xs text-amber-800 space-y-0.5">
+                    <p className="font-semibold">Cambio de plan programado</p>
+                    <p>
+                      Disfrutás del plan {TIER_INFO[tier]?.label} hasta el{' '}
+                      {new Date(business.subscription_ends_at).toLocaleDateString('es-AR')}.
+                      Luego pasás al plan{' '}
+                      <span className="font-semibold capitalize">{TIER_INFO[business.pending_tier]?.label ?? business.pending_tier}</span>.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {business.subscription_ends_at && (
+                      <p className="text-xs text-stone-400">
+                        Próximo cobro: {new Date(business.subscription_ends_at).toLocaleDateString('es-AR')}
+                      </p>
+                    )}
+                    <Link to="/precios" className="text-xs font-semibold text-brand-600 hover:text-brand-700">
+                      Ver todos los planes →
+                    </Link>
+                    {tier === 'pro' && (
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => openDowngrade('starter')}>
+                        Bajar al plan Starter
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" className="w-full !border-red-200 !text-red-500 hover:!border-red-300" onClick={() => openDowngrade('free')}>
+                      Pasar a Free
+                    </Button>
+                  </>
                 )}
-                <Link to="/precios" className="text-xs font-semibold text-brand-600 hover:text-brand-700">
-                  Ver todos los planes →
-                </Link>
-                {tier === 'pro' && (
-                  <Button variant="outline" size="sm" className="w-full" onClick={() => openDowngrade('starter')}>
-                    Bajar al plan Starter
-                  </Button>
-                )}
-                <button
-                  onClick={() => openDowngrade('free')}
-                  className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors block"
-                >
-                  Darse de baja (pasar a Free)
-                </button>
               </div>
             )}
           </div>
@@ -824,11 +876,20 @@ export default function Settings() {
 
           return (
             <>
-              <p className="text-sm text-stone-600 mb-3">
-                {downgradeTo === 'starter'
-                  ? 'Pasás de Pro a Starter ($16.900/mes). Perdés acceso a estadísticas y agenda.'
-                  : 'Tu plan pasa a Free. Perdés todas las funciones pagas.'}
-              </p>
+              {business.subscription_ends_at ? (
+                <p className="text-sm text-stone-600 mb-3">
+                  Seguís con el plan {TIER_INFO[business.tier]?.label} hasta el{' '}
+                  <span className="font-semibold">
+                    {new Date(business.subscription_ends_at).toLocaleDateString('es-AR')}
+                  </span>
+                  . A partir de esa fecha pasás al plan{' '}
+                  <span className="font-semibold">{TIER_INFO[downgradeTo]?.label ?? downgradeTo}</span>.
+                </p>
+              ) : (
+                <p className="text-sm text-stone-600 mb-3">
+                  El cambio al plan {TIER_INFO[downgradeTo]?.label ?? downgradeTo} se aplica de inmediato.
+                </p>
+              )}
 
               {hasExcess && (
                 <div className="bg-amber-50 rounded-2xl px-4 py-3 mb-4 text-xs text-amber-800 space-y-1">
@@ -877,7 +938,7 @@ export default function Settings() {
                     onClick={() => handleConfirmDowngrade(false)}
                     className="flex-1"
                   >
-                    {downgradeTo === 'starter' ? 'Ir a pagar Starter' : 'Confirmar baja'}
+                    Confirmar cambio
                   </Button>
                 </div>
               )}

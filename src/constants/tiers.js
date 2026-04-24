@@ -43,8 +43,8 @@ export const TIER_INFO = {
   },
   pro: {
     label: 'Pro',
-    price: 22900,
-    priceLabel: '$22.900/mes',
+    price: 2900,
+    priceLabel: '$2.900/mes',
     description: 'Sin límites',
     features: [
       'Clientes ilimitados',

@@ -4,7 +4,7 @@ const MP_API = 'https://api.mercadopago.com'
 
 const TIER_PRICES: Record<string, { amount: number; label: string }> = {
   starter: { amount: 16900, label: 'PLANE.AR Starter' },
-  pro:     { amount: 22900, label: 'PLANE.AR Pro' },
+  pro:     { amount: 2900, label: 'PLANE.AR Pro' },
 }
 
 const ALLOWED_ORIGINS = [
@@ -19,12 +19,14 @@ function corsHeaders(req: Request) {
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
   }
 }
 
-function getSiteUrl(req: Request): string {
-  const origin = req.headers.get('Origin') ?? ''
-  return ALLOWED_ORIGINS.includes(origin) ? origin : 'https://plane.ar'
+function getWebhookUrl() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.replace(/\/$/, '')
+  if (!supabaseUrl) return null
+  return `${supabaseUrl}/functions/v1/mp-webhook`
 }
 
 Deno.serve(async (req) => {
@@ -61,10 +63,31 @@ Deno.serve(async (req) => {
       return json(req, { error: 'Server misconfiguration' }, 500)
     }
 
-    const siteUrl = getSiteUrl(req)
+    const webhookUrl = getWebhookUrl()
+    if (!webhookUrl) {
+      console.error('SUPABASE_URL not configured')
+      return json(req, { error: 'Server misconfiguration' }, 500)
+    }
+
     const tierInfo = TIER_PRICES[tier]
     // MP requires start_date to be at least a few minutes in the future
     const startDate = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+
+    const payload = {
+      reason: tierInfo.label,
+      external_reference: `${tier}:${userId}`,
+      payer_email: userEmail,
+      back_url: 'https://plane.ar/configuracion',
+      notification_url: webhookUrl,
+      auto_recurring: {
+        frequency: 1,
+        frequency_type: 'months',
+        transaction_amount: tierInfo.amount,
+        currency_id: 'ARS',
+        start_date: startDate,
+      },
+      status: 'pending',
+    }
 
     const subRes = await fetch(`${MP_API}/preapproval`, {
       method: 'POST',
@@ -72,29 +95,58 @@ Deno.serve(async (req) => {
         'Authorization': `Bearer ${mpToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        reason: tierInfo.label,
-        external_reference: `${tier}:${userId}`,
-        payer_email: userEmail,
-        back_url: `https://plane.ar/configuracion`,
-        auto_recurring: {
-          frequency: 1,
-          frequency_type: 'months',
-          transaction_amount: tierInfo.amount,
-          currency_id: 'ARS',
-          start_date: startDate,
-        },
-        status: 'pending',
-      }),
+      body: JSON.stringify(payload),
     })
 
     if (!subRes.ok) {
-      console.error('MP preapproval error:', subRes.status)
-      return json(req, { error: 'mp_error' }, 500)
+      const errorText = await subRes.text()
+      console.error('MP preapproval error:', {
+        status: subRes.status,
+        tier,
+        userId,
+        errorText,
+      })
+      return json(req, {
+        error: 'mp_error',
+        mp_status: subRes.status,
+        mp_detail: errorText,
+      }, 500)
     }
 
     const subData = await subRes.json()
-    return json(req, { init_point: subData.init_point })
+    const initPoint = subData.init_point ?? subData.sandbox_init_point
+    if (!initPoint) {
+      console.error('MP preapproval missing init_point', { tier, userId, subData })
+      return json(req, { error: 'mp_error', mp_detail: 'missing_init_point' }, 500)
+    }
+
+    const mpSubscriptionId = subData.id ? String(subData.id) : null
+    const mpStatus = subData.status ? String(subData.status) : 'pending'
+
+    if (mpSubscriptionId) {
+      const { error: updateError } = await supabase
+        .from('businesses')
+        .update({
+          mp_subscription_id: mpSubscriptionId,
+          mp_status: mpStatus,
+        })
+        .eq('user_id', userId)
+
+      if (updateError) {
+        console.error('Failed to persist preapproval reference', {
+          userId,
+          mpSubscriptionId,
+          mpStatus,
+          code: updateError.code,
+        })
+      }
+    }
+
+    return json(req, {
+      init_point: initPoint,
+      preapproval_id: mpSubscriptionId,
+      mp_status: mpStatus,
+    })
 
   } catch (e) {
     console.error('Unexpected error in create-subscription:', e)

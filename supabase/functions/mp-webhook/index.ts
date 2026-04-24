@@ -2,50 +2,86 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const MP_API = 'https://api.mercadopago.com'
 
-// Mapa de plan_id de MP → tier interno
-// Se llena desde env vars: MP_PLAN_STARTER_ID, MP_PLAN_PRO_ID
 function buildPlanMap(): Record<string, string> {
   const map: Record<string, string> = {}
   const starterId = Deno.env.get('MP_PLAN_STARTER_ID')
   const proId = Deno.env.get('MP_PLAN_PRO_ID')
   if (starterId) map[starterId] = 'starter'
-  if (proId)     map[proId]     = 'pro'
+  if (proId) map[proId] = 'pro'
   return map
 }
 
-// Verifica la firma HMAC-SHA256 del webhook de MercadoPago
-// Docs: https://developers.mercadopago.com/en/docs/webhooks/event-handling/configure-webhooks/verify-webhook-origin
 async function verifyMPSignature(
   xSignature: string,
   xRequestId: string,
   dataId: string,
-  secret: string
+  secret: string,
 ): Promise<boolean> {
-  // X-Signature tiene formato: "ts=TIMESTAMP,v1=HASH"
   const parts: Record<string, string> = {}
   for (const part of xSignature.split(',')) {
     const [k, v] = part.split('=')
     if (k && v) parts[k.trim()] = v.trim()
   }
-  const ts = parts['ts']
-  const v1 = parts['v1']
+
+  const ts = parts.ts
+  const v1 = parts.v1
   if (!ts || !v1) return false
 
   const template = `id:${dataId};request-id:${xRequestId};ts:${ts}`
-
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
-    ['sign']
+    ['sign'],
   )
   const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(template))
   const computed = Array.from(new Uint8Array(signature))
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('')
 
   return computed === v1
+}
+
+async function fetchPreapproval(mpToken: string, preapprovalId: string) {
+  const res = await fetch(`${MP_API}/preapproval/${preapprovalId}`, {
+    headers: { Authorization: `Bearer ${mpToken}` },
+  })
+
+  if (!res.ok) {
+    console.error('Error fetching preapproval from MP:', res.status, preapprovalId)
+    return null
+  }
+
+  return await res.json()
+}
+
+async function fetchPreapprovalFromAuthorizedPayment(mpToken: string, authorizedPaymentId: string) {
+  const authRes = await fetch(`${MP_API}/authorized_payments/${authorizedPaymentId}`, {
+    headers: { Authorization: `Bearer ${mpToken}` },
+  })
+
+  if (!authRes.ok) {
+    console.error('Error fetching authorized payment from MP:', authRes.status, authorizedPaymentId)
+    return null
+  }
+
+  const authorizedPayment = await authRes.json()
+  const preapprovalId = authorizedPayment.preapproval_id ?? authorizedPayment.subscription_id ?? null
+  if (!preapprovalId) {
+    console.error('Authorized payment missing preapproval reference:', authorizedPaymentId)
+    return null
+  }
+
+  return await fetchPreapproval(mpToken, String(preapprovalId))
+}
+
+function getPreapprovalTimestamp(preapproval: any) {
+  return Math.max(
+    new Date(preapproval?.last_modified ?? 0).getTime() || 0,
+    new Date(preapproval?.date_modified ?? 0).getTime() || 0,
+    new Date(preapproval?.date_created ?? 0).getTime() || 0,
+  )
 }
 
 Deno.serve(async (req) => {
@@ -60,40 +96,48 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json()
-    const { type, data } = body
+    const bodyType = body?.type ?? null
+    const dataId = body?.data?.id ? String(body.data.id) : null
+    const url = new URL(req.url)
+    const topic =
+      bodyType ??
+      url.searchParams.get('topic') ??
+      url.searchParams.get('type') ??
+      url.searchParams.get('resource') ??
+      null
 
-    // Solo procesamos eventos de preapproval (suscripciones)
-    if (type !== 'subscription_preapproval') {
+    if (topic !== 'subscription_preapproval' && topic !== 'subscription_authorized_payment') {
       return new Response('ok', { status: 200 })
     }
 
-    // Verificar firma del webhook antes de procesar
     const webhookSecret = Deno.env.get('MP_WEBHOOK_SECRET')
     if (webhookSecret) {
       const xSignature = req.headers.get('x-signature') ?? ''
       const xRequestId = req.headers.get('x-request-id') ?? ''
-      const isValid = await verifyMPSignature(xSignature, xRequestId, data.id, webhookSecret)
+      const signedDataId = url.searchParams.get('data.id') ?? dataId ?? ''
+      const isValid = await verifyMPSignature(xSignature, xRequestId, signedDataId, webhookSecret)
       if (!isValid) {
-        console.error('Invalid MP webhook signature')
+        console.error('Invalid MP webhook signature', { topic, dataId: signedDataId, xRequestId })
         return new Response('Unauthorized', { status: 401 })
       }
     }
 
     const mpToken = Deno.env.get('MP_ACCESS_TOKEN')!
+    const resourceId = url.searchParams.get('data.id') ?? dataId
+    if (!resourceId) {
+      console.error('Webhook missing resource id', { topic, body })
+      return new Response('Missing resource id', { status: 400 })
+    }
 
-    // 1. Consultar MP para obtener el estado actual del preapproval
-    const preapprovalRes = await fetch(`${MP_API}/preapproval/${data.id}`, {
-      headers: { 'Authorization': `Bearer ${mpToken}` },
-    })
+    const preapproval =
+      topic === 'subscription_authorized_payment'
+        ? await fetchPreapprovalFromAuthorizedPayment(mpToken, resourceId)
+        : await fetchPreapproval(mpToken, resourceId)
 
-    if (!preapprovalRes.ok) {
-      console.error('Error fetching preapproval from MP:', preapprovalRes.status)
+    if (!preapproval) {
       return new Response('Error fetching preapproval', { status: 500 })
     }
 
-    const preapproval = await preapprovalRes.json()
-
-    // 2. Determinar tier: external_reference puede ser "starter:userId" o legacy "starter"/"pro"
     const planMap = buildPlanMap()
     const extRef: string = preapproval.external_reference ?? ''
     let tier: string | null = null
@@ -109,11 +153,9 @@ Deno.serve(async (req) => {
       tier = planMap[preapproval.preapproval_plan_id] ?? null
     }
 
-    // 3. Determinar nuevo estado
     const mpStatus: string = preapproval.status
-    const newTier = (mpStatus === 'authorized' && tier) ? tier : 'free'
+    const newTier = mpStatus === 'authorized' && tier ? tier : 'free'
 
-    // 4. Calcular subscription_ends_at (próxima fecha de cobro + 1 día de gracia)
     let subscriptionEndsAt: string | null = null
     if (mpStatus === 'authorized' && preapproval.next_payment_date) {
       const d = new Date(preapproval.next_payment_date)
@@ -121,15 +163,12 @@ Deno.serve(async (req) => {
       subscriptionEndsAt = d.toISOString()
     }
 
-    // 5. Actualizar en Supabase usando service role key (sin restricciones de RLS)
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // Buscar business: 1) por mp_subscription_id, 2) por user_id del external_reference, 3) por email
     const payerEmail: string = preapproval.payer_email
-
     let businessId: string | null = null
 
     const { data: bySubId } = await supabase
@@ -149,7 +188,6 @@ Deno.serve(async (req) => {
 
       if (bizByUserId) businessId = bizByUserId.id
     } else {
-      // Fallback: buscar a través de auth.users por email
       const { data: authUser } = await supabase
         .from('auth.users')
         .select('id')
@@ -172,20 +210,38 @@ Deno.serve(async (req) => {
       return new Response('Business not found', { status: 200 })
     }
 
-    // Si el negocio tiene acceso promocional, no degradamos tier ni subscription_ends_at
     const { data: bizCheck } = await supabase
       .from('businesses')
-      .select('is_promo')
+      .select('is_promo, mp_subscription_id')
       .eq('id', businessId)
       .single()
+
+    if (bizCheck?.mp_subscription_id && bizCheck.mp_subscription_id !== preapproval.id) {
+      const currentPreapproval = await fetchPreapproval(mpToken, bizCheck.mp_subscription_id)
+      if (currentPreapproval) {
+        const currentTs = getPreapprovalTimestamp(currentPreapproval)
+        const incomingTs = getPreapprovalTimestamp(preapproval)
+        const currentStatus = String(currentPreapproval.status ?? '')
+        const incomingStatus = String(preapproval.status ?? '')
+
+        const currentLooksNewer = currentTs > incomingTs
+        const currentLooksBetter = currentStatus === 'authorized' && incomingStatus !== 'authorized'
+
+        if (currentLooksNewer || currentLooksBetter) {
+          return new Response('ok', { status: 200 })
+        }
+      }
+    }
 
     const updatePayload: Record<string, unknown> = {
       mp_subscription_id: preapproval.id,
       mp_status: mpStatus,
     }
+
     if (!bizCheck?.is_promo) {
       updatePayload.tier = newTier
       updatePayload.subscription_ends_at = subscriptionEndsAt
+      updatePayload.pending_tier = null
     }
 
     const { error: updateError } = await supabase
@@ -198,11 +254,9 @@ Deno.serve(async (req) => {
       return new Response('DB update error', { status: 500 })
     }
 
-    console.log(`Updated business mp_status=${mpStatus}${bizCheck?.is_promo ? ' (promo — tier preserved)' : `, tier=${newTier}`}`)
     return new Response('ok', { status: 200 })
-
   } catch (e) {
-    console.error('Unexpected error in mp-webhook')
+    console.error('Unexpected error in mp-webhook:', e)
     return new Response('Internal server error', { status: 500 })
   }
 })
