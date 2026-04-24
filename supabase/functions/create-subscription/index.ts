@@ -4,7 +4,7 @@ const MP_API = 'https://api.mercadopago.com'
 
 const TIER_PRICES: Record<string, { amount: number; label: string }> = {
   starter: { amount: 16900, label: 'PLANE.AR Starter' },
-  pro:     { amount: 2900, label: 'PLANE.AR Pro' },
+  pro:     { amount: 22900, label: 'PLANE.AR Pro' },
 }
 
 const ALLOWED_ORIGINS = [

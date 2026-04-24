@@ -2,36 +2,28 @@
 
 **Fecha:** 2026-04-24
 
-## Contexto
+## Contexto historico
 
-Se dejo el plan `pro` temporalmente en `$2.900` para validar el flujo real de cobro,
-webhook y reconciliacion sin hacer una prueba cara.
+Este archivo queda solo como registro de la prueba real que se hizo con `pro` temporalmente
+en `$2.900` para validar cobro, webhook y reconciliacion sin hacer una prueba cara.
 
-## Cambios temporales vigentes
+## Que se hizo
 
-- `src/constants/tiers.js`
-  - `pro.price = 2900`
-  - `pro.priceLabel = '$2.900/mes'`
-- `supabase/functions/create-subscription/index.ts`
-  - `pro.amount = 2900`
+- Se bajo temporalmente `pro` a `$2.900` en:
+  - `src/constants/tiers.js`
+  - `supabase/functions/create-subscription/index.ts`
+- Se confirmo que el flujo real de:
+  - checkout
+  - webhook
+  - reconciliacion
+  funcionaba correctamente.
 
-## Objetivo de esta prueba
+## Estado actual
 
-Validar con dinero real que:
+El precio de `pro` ya fue restaurado a su valor normal:
 
-- el `preapproval` se crea correctamente
-- el checkout abre con el usuario autenticado real
-- `businesses` termina con:
-  - `mp_subscription_id`
-  - `mp_status`
-  - `tier`
-  - `subscription_ends_at`
+- `pro.price = 22900`
+- `pro.priceLabel = '$22.900/mes'`
+- `pro.amount = 22900`
 
-## Nota importante
-
-Este precio no debe considerarse definitivo. Antes de mergear a produccion hay que decidir
-si `pro` vuelve a su valor comercial real y actualizar:
-
-- `src/constants/tiers.js`
-- `supabase/functions/create-subscription/index.ts`
-- cualquier documentacion que exponga precios
+Este documento no describe el estado vigente del pricing; solo deja trazabilidad de la prueba.

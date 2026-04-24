@@ -260,7 +260,7 @@ El campo `businesses.tier` controla las features disponibles:
 |------|--------|-------------|--------|-------|-------|--------|
 | free | $0 | 5 | 2 | ✗ | ✗ | ✗ |
 | starter | $16.900/mes | 15 | 3 | ✓ | ✗ | ✗ |
-| pro | $2.900/mes | ∞ | ∞ | ✓ | ✓ | ✓ |
+| pro | $22.900/mes | ∞ | ∞ | ✓ | ✓ | ✓ |
 
 Usar `useSubscription(business)` para chequear permisos en componentes.
 
@@ -428,7 +428,7 @@ Campo `businesses.is_promo boolean DEFAULT false` que permite otorgar acceso pro
   - Usa `notification_url` apuntando a `.../functions/v1/mp-webhook`.
   - Persiste `mp_subscription_id` y `mp_status` en `businesses` apenas MP responde.
   - El contrato vigente devuelve `{ init_point, preapproval_id, mp_status }`.
-  - Hoy el precio de `pro` esta temporalmente en `$2.900` para pruebas reales de cobro. Debe revisarse antes del merge final a produccion.
+  - El precio vigente de `pro` volvio a `$22.900` tras cerrar la etapa de pruebas reales.
 
 - `mp-webhook`
   - Procesa `subscription_preapproval` y `subscription_authorized_payment`.
