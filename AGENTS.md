@@ -271,10 +271,9 @@ Nota:
 
 El campo `businesses.allow_guest_bookings` controla si una persona sin suscripción activa puede reservar en `/reservar/:slug`.
 
-- `false`: solo suscriptores.
-- `true`: también invitados.
-
-Esto se administra desde Settings.
+- Hoy debe considerarse desactivado por seguridad.
+- El toggle ya no se administra desde Settings.
+- No reactivar el flujo guest sin una capa adicional de verificación, por ejemplo OTP.
 
 ## Fechas y formato
 
@@ -304,13 +303,39 @@ Edge functions en `supabase/functions/`:
 
 | Función | Uso |
 |---------|-----|
-| `create-subscription` | Crea preapproval |
-| `mp-webhook` | Actualiza tier y vencimiento |
+| `create-subscription` | Crea el `preapproval`, persiste `mp_subscription_id` y `mp_status`, y devuelve `{ init_point, preapproval_id, mp_status }` |
+| `cancel-subscription` | Programa downgrade a `starter` o `free`, mantiene `pending_tier` y dispara email transaccional |
+| `mp-webhook` | Procesa eventos de suscripción, valida firma si existe `MP_WEBHOOK_SECRET` y sincroniza estado real |
+| `verify-subscription` | Fallback server-side de reconciliación cuando el cobro ya ocurrió pero el webhook no impactó aún |
 
 Decisiones importantes:
 - `external_reference` se envía como `${tier}:${userId}`.
+- `create-subscription` usa `notification_url` al webhook y `back_url` a `https://plane.ar/configuracion`.
 - El webhook busca negocio primero por `mp_subscription_id`, luego por `user_id` desde `external_reference`, y recién después por email.
+- `mp-webhook` consulta el recurso real en Mercado Pago antes de actualizar `businesses`.
+- `mp-webhook` y `verify-subscription` no deben dejar que una suscripción vieja cancelada pise una nueva `authorized`.
+- `pending_tier` es solo hint de UI; el acceso real depende de `tier`, `subscription_ends_at` y `get_effective_tier`.
 - Si `business.is_promo = true`, el webhook no debe tocar `tier` ni `subscription_ends_at`.
+
+UX a recordar:
+- `AppLayout.jsx` muestra badge del plan en el navbar: `pro` dorado, `starter` plateado, `free` neutro.
+- `Pricing.jsx`, `Dashboard.jsx` y `AppLayout.jsx` pueden mostrar estado de `Verificando pago...` y disparar reconciliación.
+- `Settings.jsx` muestra feedback inmediato al pedir la baja y luego recarga.
+
+Secrets operativos relevantes:
+- `MP_ACCESS_TOKEN`
+- `MP_WEBHOOK_SECRET` (recomendado en producción)
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `RESEND_API_KEY`
+- `CONTACT_FROM_EMAIL`
+
+Docs relacionadas:
+- `doc/integracion-mercadopago.md`
+- `doc/mercadopago-sandbox-e2e.md`
+- `doc/reconciliacion-suscripcion.md`
+- `doc/scheduled-downgrade.md`
+- `doc/pago-real-prueba-2900.md`
 
 ## Acceso promocional pro
 
@@ -327,9 +352,22 @@ Referencia:
 - `doc/promo-access.md`
 - `doc/admin-panel-v2.md`
 
+## Analytics (GA4)
+
+- La base de GA4 ya está integrada en `main`.
+- Archivos clave:
+  - `src/lib/analytics.js`
+  - `src/components/GATracker.jsx`
+- `GATracker` vive montado desde `App.jsx` dentro de `BrowserRouter`.
+- Eventos ya trackeados:
+  - `pageview`
+  - `sign_up`
+  - `cta_click`
+- Referencia: `doc/analytics-ga4.md`
+
 ## No implementado todavía
 
-- WhatsApp o emails automáticos.
+- WhatsApp automático.
 - Selección de ítems o combos en turnos (`appointment_items` diseñado, no implementado).
 - App móvil nativa.
 - Guest mode con verificación SMS OTP.
