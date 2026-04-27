@@ -1,15 +1,14 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { buildCorsHeaders } from '../_shared/env.ts'
 
 const MP_API = 'https://api.mercadopago.com'
 
-function json(data: unknown, status = 200) {
+function json(req: Request, data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      ...buildCorsHeaders(req),
     },
   })
 }
@@ -75,11 +74,11 @@ function chooseBestPreapproval(currentPreapproval: any, latestPreapproval: any) 
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return json({ ok: true })
+  if (req.method === 'OPTIONS') return json(req, { ok: true })
 
   try {
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return json({ error: 'Unauthorized' }, 401)
+    if (!authHeader) return json(req, { error: 'Unauthorized' }, 401)
 
     const token = authHeader.replace('Bearer ', '')
     const supabase = createClient(
@@ -88,10 +87,10 @@ Deno.serve(async (req) => {
     )
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user?.email) return json({ error: 'Unauthorized' }, 401)
+    if (authError || !user?.email) return json(req, { error: 'Unauthorized' }, 401)
 
     const mpToken = Deno.env.get('MP_ACCESS_TOKEN')
-    if (!mpToken) return json({ error: 'Server misconfiguration' }, 500)
+    if (!mpToken) return json(req, { error: 'Server misconfiguration' }, 500)
 
     const { data: business, error: bizError } = await supabase
       .from('businesses')
@@ -99,7 +98,7 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id)
       .single()
 
-    if (bizError || !business) return json({ error: 'Business not found' }, 404)
+    if (bizError || !business) return json(req, { error: 'Business not found' }, 404)
 
     let preapproval = null
     if (business.mp_subscription_id) {
@@ -108,7 +107,7 @@ Deno.serve(async (req) => {
     const latestPreapproval = await searchLatestPreapproval(mpToken, user.id, user.email)
     preapproval = chooseBestPreapproval(preapproval, latestPreapproval)
     if (!preapproval) {
-      return json({ ok: true, changed: false, reason: 'not_found' })
+      return json(req, { ok: true, changed: false, reason: 'not_found' })
     }
 
     const extRef = String(preapproval.external_reference ?? '')
@@ -146,9 +145,9 @@ Deno.serve(async (req) => {
       .select('*')
       .single()
 
-    if (updateError) return json({ error: 'DB update error' }, 500)
+    if (updateError) return json(req, { error: 'DB update error' }, 500)
 
-    return json({
+    return json(req, {
       ok: true,
       changed: true,
       mp_status: mpStatus,
@@ -156,6 +155,6 @@ Deno.serve(async (req) => {
     })
   } catch (error) {
     console.error('Unexpected error in verify-subscription:', error)
-    return json({ error: 'Internal server error' }, 500)
+    return json(req, { error: 'Internal server error' }, 500)
   }
 })

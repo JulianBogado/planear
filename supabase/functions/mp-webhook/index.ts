@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { buildCorsHeaders } from '../_shared/env.ts'
 
 const MP_API = 'https://api.mercadopago.com'
 
@@ -87,10 +88,7 @@ function getPreapprovalTimestamp(preapproval: any) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': Deno.env.get('SITE_URL') ?? 'http://localhost:5173',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
+      headers: buildCorsHeaders(req),
     })
   }
 

@@ -29,7 +29,7 @@ MP sandbox rechazaba el preapproval por dos razones:
 
 **Solución:**
 - `start_date` configurado a `now + 10 minutos`.
-- `back_url` hardcodeado a `https://plane.ar/configuracion` (intencional, no debe ser dinámico).
+- `back_url` resuelto desde `APP_SITE_URL` para separar local, staging y producción sin hardcodes en código.
 
 ---
 

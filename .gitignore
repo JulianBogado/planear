@@ -10,6 +10,7 @@ dist-ssr/
 .env
 .env.local
 .env.*.local
+supabase/env/*.env
 *.local
 
 # Supabase CLI temporales

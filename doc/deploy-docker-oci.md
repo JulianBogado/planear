@@ -60,7 +60,7 @@ Las credenciales de MP están guardadas como secrets en las Edge Functions de Su
 2. Crear (o seleccionar) la app de PLANE.AR en **modo producción**
 3. Copiar el **Access Token de producción** (empieza con `APP_USR-`)
 4. Ir a la sección **Webhooks** de la misma app y:
-   - Configurar la URL del webhook: `https://hmbybhzvbpsbdkjeztpn.supabase.co/functions/v1/mp-webhook`
+   - Configurar la URL del webhook: `https://TU_PROJECT_REF.supabase.co/functions/v1/mp-webhook`
    - Copiar el **Webhook Secret** (se usará para verificar firma HMAC)
 
 ### 1.2 Actualizar secrets en Supabase
@@ -68,8 +68,8 @@ Las credenciales de MP están guardadas como secrets en las Edge Functions de Su
 Con la CLI de Supabase:
 
 ```bash
-supabase secrets set MP_ACCESS_TOKEN="APP_USR-xxxxxxxxx" --project-ref hmbybhzvbpsbdkjeztpn
-supabase secrets set MP_WEBHOOK_SECRET="tu_webhook_secret" --project-ref hmbybhzvbpsbdkjeztpn
+supabase secrets set MP_ACCESS_TOKEN="APP_USR-xxxxxxxxx" --project-ref TU_PROJECT_REF
+supabase secrets set MP_WEBHOOK_SECRET="tu_webhook_secret" --project-ref TU_PROJECT_REF
 ```
 
 O desde el dashboard: `Project → Edge Functions → Secrets → agregar/editar MP_ACCESS_TOKEN y MP_WEBHOOK_SECRET`
@@ -177,8 +177,8 @@ El build no se hace con docker-compose (porque necesita pasar las build args). d
 ```bash
 # 1. Build (desde e:\Suscripciones\subsmanager\)
 docker build \
-  --build-arg VITE_SUPABASE_URL=https://hmbybhzvbpsbdkjeztpn.supabase.co \
-  --build-arg VITE_SUPABASE_ANON_KEY=sb_publishable_kvKi-GcgX9yZ9PP18WDbCw_YoaOZ5Ko \
+  --build-arg VITE_SUPABASE_URL=https://TU_PROJECT_REF.supabase.co \
+  --build-arg VITE_SUPABASE_ANON_KEY=TU_PROD_ANON_KEY \
   -t planear:latest \
   .
 
@@ -198,8 +198,8 @@ docker load < planear.tar.gz
 # Copiar el proyecto al servidor (sin node_modules ni dist)
 # Luego buildear en el servidor:
 docker build \
-  --build-arg VITE_SUPABASE_URL=https://hmbybhzvbpsbdkjeztpn.supabase.co \
-  --build-arg VITE_SUPABASE_ANON_KEY=sb_publishable_kvKi-GcgX9yZ9PP18WDbCw_YoaOZ5Ko \
+  --build-arg VITE_SUPABASE_URL=https://TU_PROJECT_REF.supabase.co \
+  --build-arg VITE_SUPABASE_ANON_KEY=TU_PROD_ANON_KEY \
   -t planear:latest \
   /ruta/al/proyecto
 ```
@@ -265,7 +265,7 @@ docker ps | grep planear
 curl -I http://localhost:8080
 
 # MercadoPago: hacer una suscripción de prueba y revisar logs de la edge function
-supabase functions logs mp-webhook --project-ref hmbybhzvbpsbdkjeztpn
+supabase functions logs mp-webhook --project-ref TU_PROJECT_REF
 ```
 
 ---

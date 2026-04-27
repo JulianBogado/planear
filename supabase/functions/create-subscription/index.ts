@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { buildCorsHeaders, getAppSiteUrl } from '../_shared/env.ts'
 
 const MP_API = 'https://api.mercadopago.com'
 
@@ -7,20 +8,8 @@ const TIER_PRICES: Record<string, { amount: number; label: string }> = {
   pro:     { amount: 22900, label: 'PLANE.AR Pro' },
 }
 
-const ALLOWED_ORIGINS = [
-  'http://localhost:5173',
-  'https://plane.ar',
-  'https://www.plane.ar',
-]
-
 function corsHeaders(req: Request) {
-  const origin = req.headers.get('Origin') ?? ''
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  }
+  return buildCorsHeaders(req)
 }
 
 function getWebhookUrl() {
@@ -77,7 +66,7 @@ Deno.serve(async (req) => {
       reason: tierInfo.label,
       external_reference: `${tier}:${userId}`,
       payer_email: userEmail,
-      back_url: 'https://plane.ar/configuracion',
+      back_url: `${getAppSiteUrl()}/configuracion`,
       notification_url: webhookUrl,
       auto_recurring: {
         frequency: 1,

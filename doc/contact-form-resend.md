@@ -79,7 +79,8 @@ Configurar en Supabase Edge Functions:
 - `RESEND_API_KEY`
 - `CONTACT_TO_EMAIL=hola@plane.ar`
 - `CONTACT_FROM_EMAIL`
-- `SITE_URL`
+- `APP_SITE_URL`
+- `ALLOWED_ORIGINS`
 
 ## Notas
 

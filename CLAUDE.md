@@ -38,7 +38,11 @@ Cada vez que haga una nueva implentación debe quedar asentada en una carpeta qu
 
 ## Variables de entorno
 
-Archivo: `subsmanager/.env.local`
+Frontend por modo:
+
+- `subsmanager/.env.development.local`
+- `subsmanager/.env.staging.local`
+- `subsmanager/.env.production.local`
 
 ```
 VITE_SUPABASE_URL=...
@@ -46,6 +50,7 @@ VITE_SUPABASE_ANON_KEY=...
 ```
 
 > ⚠️ `VITE_SUPERUSER_EMAIL` fue eliminado del frontend (security review 2026-04-19). La verificación de admin se hace exclusivamente via la RPC `is_admin()` en Supabase — nunca comparar email en el cliente. Ver `src/hooks/useIsAdmin.js`.
+> `npm run dev` usa `development` y debe apuntar al Supabase local en Docker.
 
 ---
 
@@ -426,6 +431,7 @@ Campo `businesses.is_promo boolean DEFAULT false` que permite otorgar acceso pro
   - Crea el `preapproval` de Mercado Pago para `starter` o `pro`.
   - Usa `external_reference: "${tier}:${userId}"`.
   - Usa `notification_url` apuntando a `.../functions/v1/mp-webhook`.
+  - Usa `back_url` derivado de `APP_SITE_URL`, no hardcodeado en código.
   - Persiste `mp_subscription_id` y `mp_status` en `businesses` apenas MP responde.
   - El contrato vigente devuelve `{ init_point, preapproval_id, mp_status }`.
   - El precio vigente de `pro` volvio a `$22.900` tras cerrar la etapa de pruebas reales.
@@ -488,7 +494,7 @@ Campo `businesses.is_promo boolean DEFAULT false` que permite otorgar acceso pro
 ## Analytics (GA4)
 
 **Paquete:** `react-ga4`  
-**Variable de entorno:** `VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX` en `.env.local`
+**Variable de entorno:** `VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX` en el `.env.[mode].local` que corresponda
 
 | Archivo | Rol |
 |---------|-----|

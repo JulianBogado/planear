@@ -13,7 +13,7 @@ esta documentado en `CLAUDE.md`, `doc/reconciliacion-suscripcion.md` y `doc/sche
 - `create-subscription` crea el `preapproval` con:
   - `external_reference: ${tier}:${userId}`
   - `notification_url` al `mp-webhook`
-  - `back_url` a `https://plane.ar/configuracion`
+  - `back_url` resuelto desde `APP_SITE_URL`
 - `mp-webhook` procesa `subscription_preapproval` y `subscription_authorized_payment`.
 - `verify-subscription` queda como fallback oficial cuando el webhook tarda o no impacta.
 - `cancel-subscription` conserva el downgrade programado con `pending_tier`.

@@ -1,327 +1,118 @@
-# Organización de Entornos Supabase
+# Entornos Supabase: local, staging y produccion
 
-**Fecha:** 2026-04-22
+**Fecha:** 2026-04-27
 
 ## Objetivo
 
-Definir una forma simple y segura de trabajar con Supabase mientras la app ya está en producción, sin desarrollar directamente sobre la base real.
+Separar claramente los tres entornos de trabajo del proyecto para evitar que el desarrollo diario use credenciales o datos de produccion por defecto.
 
-La recomendación para este proyecto es usar:
+## Esquema vigente
 
-- **1 proyecto de producción**
-- **1 proyecto de staging**
+- **Local**
+  - Corre con `supabase start` en Docker.
+  - Es el entorno por defecto de `npm run dev`.
+  - Usa `.env.development.local` para el frontend.
+  - Usa `supabase/env/local.functions.env` para Edge Functions locales.
 
-Y trabajar localmente contra `staging`.
+- **Staging**
+  - Vive en un proyecto remoto nuevo de Supabase.
+  - Se usa para validar migraciones, RLS, functions y cambios antes de produccion.
+  - Usa `.env.staging.local` para el frontend local cuando querés apuntar a staging.
+  - Usa `supabase/env/staging.functions.env` para secrets de functions.
 
----
+- **Produccion**
+  - Es el proyecto remoto actual en uso por la app publicada.
+  - Usa `.env.production.local` solo para builds locales excepcionales.
+  - En deploy real, las variables del frontend deben venir del host o pipeline.
+  - Usa `supabase/env/prod.functions.env` para sincronizar secrets remotos.
 
-## Estructura recomendada
+## Regla principal
 
-### Producción
+- `npm run dev` siempre debe levantar la app contra **Supabase local**.
+- `npm run dev:staging` existe para probar el frontend contra staging remoto.
+- `npm run build` genera build de produccion.
+- `npm run build:staging` genera build orientado a staging.
 
-Es el proyecto Supabase que usa la app en vivo.
+## Frontend
 
-Uso esperado:
+Variables requeridas:
 
-- usuarios reales
-- datos reales
-- deploy final
-- operación normal del negocio
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
-No usar para:
+Templates incluidos:
 
-- pruebas manuales con datos fake
-- cambios de schema sin validar
-- pruebas de edge functions
-- debugging agresivo
-- test de formularios, webhooks o RLS
+- `.env.development.example`
+- `.env.staging.example`
+- `.env.production.example`
 
----
+Copias locales esperadas:
 
-### Staging
+- `.env.development.local`
+- `.env.staging.local`
+- `.env.production.local`
 
-Es un proyecto Supabase separado, usado para desarrollo y validación antes de pasar cambios a producción.
+No usar `.env.local` como fuente principal porque Vite lo carga en todos los modos.
 
-Uso esperado:
+## Edge Functions
 
-- probar frontend local
-- probar migraciones
-- probar edge functions
-- probar RLS
-- probar secrets
-- probar integraciones nuevas
+Variables configurables por entorno:
 
-La idea es que `staging` sea lo más parecido posible a `producción`, pero sin ser el entorno real del negocio.
+- `APP_SITE_URL`
+- `ALLOWED_ORIGINS`
+- `MP_ACCESS_TOKEN`
+- `MP_WEBHOOK_SECRET`
+- `RESEND_API_KEY`
+- `CONTACT_FROM_EMAIL`
+- `CONTACT_TO_EMAIL`
 
----
+Templates incluidos:
 
-## Flujo recomendado
+- `supabase/env/local.functions.example`
+- `supabase/env/staging.functions.example`
+- `supabase/env/prod.functions.example`
 
-### Día a día
+Copias locales esperadas:
 
-1. La app publicada usa **producción**.
-2. Vos trabajás en VS Code local.
-3. Tu entorno local apunta a **staging**.
-4. Probás ahí todo lo nuevo.
-5. Cuando queda bien, recién lo llevás a **producción**.
+- `supabase/env/local.functions.env`
+- `supabase/env/staging.functions.env`
+- `supabase/env/prod.functions.env`
 
----
+`SITE_URL` queda soportada solo por compatibilidad. La convencion nueva es `APP_SITE_URL` + `ALLOWED_ORIGINS`.
 
-## Cómo crear staging
+## CLI y deploy
 
-### Opción recomendada
+No usar `supabase link` como mecanismo para cambiar de entorno. El estado de `supabase/.temp/project-ref` no debe considerarse confiable para deploys remotos.
 
-Crear un proyecto nuevo de Supabase para staging y clonarlo desde producción.
+Toda operacion remota debe usar `--project-ref` explicito.
 
-Esto sirve cuando querés un entorno de prueba con una base parecida a la real.
+Scripts npm preparados:
 
-Supabase permite clonar un proyecto restaurando datos desde producción a un proyecto nuevo.
+- `npm run supabase:start`
+- `npm run supabase:stop`
+- `npm run supabase:functions:serve:local`
+- `npm run supabase:functions:deploy:staging`
+- `npm run supabase:functions:deploy:prod`
+- `npm run supabase:secrets:set:staging`
+- `npm run supabase:secrets:set:prod`
 
-Documentación oficial:
+Variables necesarias para deploy remoto:
 
-- https://supabase.com/docs/guides/platform/clone-project
+- `SUPABASE_PROJECT_REF_STAGING`
+- `SUPABASE_PROJECT_REF_PROD`
 
----
+## Integraciones externas
 
-## Qué copia el clone de Supabase
+- **Local**: se pueden dejar desactivadas o con credenciales de prueba.
+- **Staging**: debe usar sandbox o credenciales test.
+- **Produccion**: usa credenciales reales.
 
-Cuando clonás/restaurás desde producción a un proyecto nuevo, Supabase copia:
+Hoy staging sigue sin URL publica propia, asi que los flujos externos que dependen de callbacks HTTP completos quedan preparados pero no necesariamente cerrados end-to-end.
 
-- schema de base de datos
-- tablas
-- vistas
-- funciones SQL
-- datos
-- índices
-- roles, permisos y usuarios de base
-- datos de `auth` y cuentas de usuarios
+## Checklist rapido
 
----
-
-## Qué NO se copia automáticamente
-
-Después del clone, tenés que revisar o configurar manualmente:
-
-- Edge Functions
-- secrets de Edge Functions
-- configuración de Auth
-- API keys
-- Storage y buckets
-- Realtime
-- integraciones externas
-- callbacks / redirect URLs
-
-Esto es importante: el clone no deja staging “idéntico” a producción en toda la plataforma, sino principalmente en la base de datos.
-
----
-
-## Recomendación importante sobre datos reales
-
-Si clonás producción a staging, vas a tener datos reales o muy cercanos a los reales.
-
-Por eso:
-
-- no uses staging para pruebas desordenadas
-- no mandes mails reales sin querer
-- no dispares webhooks reales
-- no dejes jobs automáticos activos si pueden hacer acciones externas
-
-Si usás extensiones o jobs con efectos externos, revisalos y desactivalos si corresponde.
-
----
-
-## Variables de entorno
-
-### Local
-
-Tu `.env.local` debería apuntar a **staging**.
-
-Ejemplo:
-
-```env
-VITE_SUPABASE_URL=https://TU-STAGING.supabase.co
-VITE_SUPABASE_ANON_KEY=TU_STAGING_ANON_KEY
-```
-
-Eso hace que cuando levantes la app local en VS Code, estés trabajando contra staging y no contra producción.
-
----
-
-### Producción
-
-Las variables del hosting deben apuntar al proyecto de **producción**.
-
-Ejemplo conceptual:
-
-```env
-VITE_SUPABASE_URL=https://TU-PROD.supabase.co
-VITE_SUPABASE_ANON_KEY=TU_PROD_ANON_KEY
-```
-
-En resumen:
-
-- **local usa staging**
-- **deploy usa producción**
-
----
-
-## Cómo trabajar con cambios
-
-### Frontend puro
-
-Si el cambio es solo visual o de frontend:
-
-- trabajás local contra staging
-- verificás que no rompa nada
-- deployás la web
-
-### Cambios de base de datos
-
-Si el cambio toca schema:
-
-1. crear migración
-2. aplicar en staging
-3. probar
-4. aplicar en producción
-
-### Cambios de edge functions
-
-Si el cambio toca una función:
-
-1. editar en branch local
-2. deployar a staging
-3. probar
-4. deployar a producción
-
-### Cambios de secrets
-
-Los secrets deben cargarse por separado en cada entorno:
-
-- staging
-- producción
-
-Nunca asumir que un secret cargado en staging existe también en producción.
-
----
-
-## Flujo de trabajo recomendado
-
-### Branches de Git
-
-- `main` → estado estable
-- `feature/...` → trabajo nuevo
-
-### Flujo
-
-1. crear branch nueva
-2. desarrollar localmente apuntando a staging
-3. probar cambios
-4. si hay migraciones, validarlas primero en staging
-5. mergear cuando esté listo
-6. aplicar migraciones y functions en producción
-
----
-
-## Qué conviene probar siempre en staging
-
-- migraciones
-- RLS
-- edge functions
-- formularios públicos
-- webhooks
-- auth
-- secrets nuevos
-- cambios en settings o redirects
-
----
-
-## Qué podés hacer en producción con cuidado
-
-Sí podés:
-
-- mirar datos
-- revisar logs
-- validar que algo ya desplegado funciona
-- verificar usuarios reales o comportamiento real
-
-No conviene hacer directo:
-
-- pruebas con datos inventados
-- creación de tablas nuevas
-- cambios de columnas
-- cambios de policies
-- pruebas de emails
-- debugging experimental
-- deploys no probados
-
----
-
-## Cuándo refrescar staging desde producción
-
-Tiene sentido volver a clonar o refrescar staging cuando:
-
-- los datos de staging quedaron viejos
-- necesitás reproducir un bug con datos reales
-- querés validar una migración o feature sobre un entorno parecido a producción
-
-No hace falta hacerlo todos los días.
-
-Se puede usar como “foto razonablemente actual” del estado real.
-
----
-
-## Checklist después de clonar producción a staging
-
-Después de crear o refrescar staging, revisar:
-
-- `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` del entorno local
-- secrets de Edge Functions
-- deploy de Edge Functions necesarias
-- URLs de redirección en Auth
-- proveedores de email
-- webhooks externos
-- Storage
-- cualquier cron o integración automática
-
----
-
-## Estrategia simple recomendada para este proyecto
-
-### Lo mínimo sano
-
-- **Producción**: proyecto real
-- **Staging**: proyecto separado
-- **Local**: apunta a staging
-
-### Regla práctica
-
-- si el cambio toca solo UI, igual probalo en staging
-- si toca Supabase, nunca lo pruebes primero en producción
-
----
-
-## Resumen corto
-
-La organización recomendada es:
-
-- app en vivo → **Supabase producción**
-- VS Code local → **Supabase staging**
-- cambios nuevos → primero staging, después producción
-
-Y si necesitás un staging bien parecido a producción, lo resolvés clonando/restaurando producción a un proyecto nuevo y reconfigurando manualmente lo que no se copia solo.
-
----
-
-## Referencias oficiales
-
-- Clone / restore de proyecto:
-  https://supabase.com/docs/guides/platform/clone-project
-
-- Branching:
-  https://supabase.com/docs/guides/deployment/branching
-
-- Managing environments:
-  https://supabase.com/docs/guides/deployment/managing-environments
-
-- Database migrations:
-  https://supabase.com/docs/guides/deployment/database-migrations
+1. Copiar el template correcto de frontend al `.env.[mode].local` adecuado.
+2. Copiar el template correcto de functions a `supabase/env/*.env`.
+3. Levantar Supabase local con `npm run supabase:start`.
+4. Correr `npm run dev` para local o `npm run dev:staging` para remoto.
+5. Para deploys y secrets remotos, exportar `SUPABASE_PROJECT_REF_STAGING` y `SUPABASE_PROJECT_REF_PROD`.

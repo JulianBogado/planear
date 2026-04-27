@@ -71,16 +71,16 @@ Removido completamente del bundle. Solo vive en la DB (función `is_admin()` che
 ### ✅ CRÍTICO 11 — CORS `Access-Control-Allow-Origin: *` en edge functions
 **Archivos:** `supabase/functions/create-subscription/index.ts`, `supabase/functions/mp-webhook/index.ts`
 
-Ambas funciones devolvían `*` en el header CORS, permitiendo que cualquier origen invocara las funciones desde un browser. Ahora usan el `SITE_URL` env var como allowed origin.
+Ambas funciones devolvían `*` en el header CORS, permitiendo que cualquier origen invocara las funciones desde un browser. Ahora usan `APP_SITE_URL` y `ALLOWED_ORIGINS` como configuración principal de CORS.
 
 ```typescript
 // Antes: 'Access-Control-Allow-Origin': '*'
 // Después:
-'Access-Control-Allow-Origin': Deno.env.get('SITE_URL') ?? 'http://localhost:5173'
+'Access-Control-Allow-Origin': origen permitido derivado de `ALLOWED_ORIGINS`
 ```
 
-**Acción requerida:** Setear `SITE_URL` en los secrets de las edge functions:
-Supabase Dashboard → Edge Functions → Secrets → agregar `SITE_URL=https://TU_DOMINIO.com`
+**Acción requerida:** Setear `APP_SITE_URL` y `ALLOWED_ORIGINS` en los secrets de las edge functions:
+Supabase Dashboard → Edge Functions → Secrets → agregar `APP_SITE_URL=https://TU_DOMINIO.com` y `ALLOWED_ORIGINS=https://TU_DOMINIO.com`
 
 ### ✅ CRÍTICO 12 — Sin verificación de firma del webhook de MercadoPago
 **Archivo:** `supabase/functions/mp-webhook/index.ts`
@@ -152,7 +152,7 @@ El rol `authenticated` conserva SELECT table-level completo (protegido por `own_
 | Item | Acción | Dónde |
 |------|--------|-------|
 | **HaveIBeenPwned protection** | Habilitar "Leaked password protection" | Supabase Dashboard → Auth → Providers → Email → Password Settings → activar toggle |
-| **SITE_URL en edge functions** | Setear `SITE_URL=https://TU_DOMINIO.com` | Supabase Dashboard → Edge Functions → Secrets |
+| **APP_SITE_URL y ALLOWED_ORIGINS en edge functions** | Setear `APP_SITE_URL=https://TU_DOMINIO.com` y `ALLOWED_ORIGINS=https://TU_DOMINIO.com` | Supabase Dashboard → Edge Functions → Secrets |
 | **MP_WEBHOOK_SECRET en edge functions** | Obtener de MP Dashboard → Webhooks y setear el secret | Supabase Dashboard → Edge Functions → Secrets |
 | **Deploy nginx.conf** | Copiar `deploy/nginx.conf` al servidor Oracle, reemplazar `TU_DOMINIO.com` y configurar SSL con Let's Encrypt | Oracle server |
 | **Rate limiting en public_lookup_subscriber** | Ver opciones en `doc/security-review.md` sección anterior — opción A (edge function proxy) para V2 | Supabase Edge Functions |

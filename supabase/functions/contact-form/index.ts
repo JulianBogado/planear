@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { buildCorsHeaders } from '../_shared/env.ts'
 
 const RESEND_API = 'https://api.resend.com/emails'
 
@@ -14,37 +15,8 @@ type ContactPayload = {
   form_started_at?: number
 }
 
-function getAllowedOrigins() {
-  const configuredSiteUrl = Deno.env.get('SITE_URL')?.trim()
-  const origins = new Set<string>(['http://localhost:5173'])
-
-  if (configuredSiteUrl) {
-    origins.add(configuredSiteUrl)
-
-    try {
-      const siteUrl = new URL(configuredSiteUrl)
-      if (siteUrl.hostname === 'plane.ar') origins.add('https://www.plane.ar')
-      if (siteUrl.hostname === 'www.plane.ar') origins.add('https://plane.ar')
-    } catch {
-      // Ignore malformed SITE_URL and keep localhost fallback.
-    }
-  } else {
-    origins.add('https://plane.ar')
-    origins.add('https://www.plane.ar')
-  }
-
-  return Array.from(origins)
-}
-
 function corsHeaders(req: Request) {
-  const allowedOrigins = getAllowedOrigins()
-  const origin = req.headers.get('Origin') ?? ''
-  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0]
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  }
+  return buildCorsHeaders(req)
 }
 
 function json(req: Request, data: unknown, status = 200) {

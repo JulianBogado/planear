@@ -4,10 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite --mode development",
+    "dev:staging": "vite --mode staging",
+    "build": "vite build --mode production",
+    "build:staging": "vite build --mode staging",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview --mode production",
+    "supabase:start": "node scripts/supabase-env.mjs start",
+    "supabase:stop": "node scripts/supabase-env.mjs stop",
+    "supabase:functions:serve:local": "node scripts/supabase-env.mjs functions:serve:local",
+    "supabase:functions:deploy:staging": "node scripts/supabase-env.mjs functions:deploy:staging",
+    "supabase:functions:deploy:prod": "node scripts/supabase-env.mjs functions:deploy:prod",
+    "supabase:secrets:set:staging": "node scripts/supabase-env.mjs secrets:set:staging",
+    "supabase:secrets:set:prod": "node scripts/supabase-env.mjs secrets:set:prod"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.100.1",

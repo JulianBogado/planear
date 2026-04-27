@@ -1,13 +1,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { buildCorsHeaders } from '../_shared/env.ts'
 
 const MP_API = 'https://api.mercadopago.com'
 const RESEND_API = 'https://api.resend.com/emails'
-
-const ALLOWED_ORIGINS = [
-  'http://localhost:5173',
-  'https://plane.ar',
-  'https://www.plane.ar',
-]
 
 const TIER_LIMITS: Record<string, { maxSubscribers: number; maxPlans: number }> = {
   starter: { maxSubscribers: 15, maxPlans: 3 },
@@ -25,13 +20,7 @@ function getWebhookUrl() {
 }
 
 function corsHeaders(req: Request) {
-  const origin = req.headers.get('Origin') ?? ''
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  }
+  return buildCorsHeaders(req)
 }
 
 function json(req: Request, data: unknown, status = 200) {

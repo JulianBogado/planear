@@ -58,7 +58,11 @@ Regla práctica:
 
 ## Variables de entorno
 
-Archivo local: `subsmanager/.env.local`
+Frontend por modo:
+
+- `subsmanager/.env.development.local`
+- `subsmanager/.env.staging.local`
+- `subsmanager/.env.production.local`
 
 ```env
 VITE_SUPABASE_URL=...
@@ -68,6 +72,7 @@ VITE_SUPABASE_ANON_KEY=...
 Nota importante:
 - `VITE_SUPERUSER_EMAIL` fue eliminado del frontend en la review de seguridad del `2026-04-19`.
 - La verificación de admin se hace exclusivamente con `src/hooks/useIsAdmin.js` y la RPC `is_admin()`.
+- `npm run dev` debe usar siempre el entorno `development` local, no staging ni producción.
 
 ## Rutas que conviene recordar
 
@@ -310,7 +315,7 @@ Edge functions en `supabase/functions/`:
 
 Decisiones importantes:
 - `external_reference` se envía como `${tier}:${userId}`.
-- `create-subscription` usa `notification_url` al webhook y `back_url` a `https://plane.ar/configuracion`.
+- `create-subscription` usa `notification_url` al webhook y `back_url` derivado de `APP_SITE_URL`.
 - El webhook busca negocio primero por `mp_subscription_id`, luego por `user_id` desde `external_reference`, y recién después por email.
 - `mp-webhook` consulta el recurso real en Mercado Pago antes de actualizar `businesses`.
 - `mp-webhook` y `verify-subscription` no deben dejar que una suscripción vieja cancelada pise una nueva `authorized`.
@@ -329,6 +334,9 @@ Secrets operativos relevantes:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `RESEND_API_KEY`
 - `CONTACT_FROM_EMAIL`
+- `CONTACT_TO_EMAIL`
+- `APP_SITE_URL`
+- `ALLOWED_ORIGINS`
 
 Docs relacionadas:
 - `doc/integracion-mercadopago.md`

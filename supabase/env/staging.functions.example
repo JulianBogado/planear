@@ -1,0 +1,7 @@
+APP_SITE_URL=https://staging.tu-dominio.com
+ALLOWED_ORIGINS=https://staging.tu-dominio.com,http://localhost:5173
+MP_ACCESS_TOKEN=TEST-REEMPLAZAR_EN_STAGING
+MP_WEBHOOK_SECRET=
+RESEND_API_KEY=
+CONTACT_FROM_EMAIL=
+CONTACT_TO_EMAIL=
