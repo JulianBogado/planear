@@ -114,18 +114,7 @@ export default function Dashboard() {
       <div>
         <h1 className="font-extrabold text-4xl text-stone-900 leading-tight">Hola</h1>
         {business && (
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <p className="text-brand-600 font-semibold text-base">{business.name}</p>
-            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
-              effectiveTier === 'pro'
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : effectiveTier === 'starter'
-                ? 'bg-sky-50 text-sky-700 border border-sky-200'
-                : 'bg-stone-100 text-stone-600 border border-stone-200'
-            }`}>
-              {effectiveTier}
-            </span>
-          </div>
+          <p className="text-brand-600 font-semibold text-base mt-0.5">{business.name}</p>
         )}
         {verificationMessage && (
           <div className="mt-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800 max-w-xl">

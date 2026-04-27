@@ -90,10 +90,10 @@ export default function AppLayout({ business, updateBusiness }) {
   const isConfigActive = location.pathname === '/configuracion'
   const tierBadgeClass =
     effectiveTier === 'pro'
-      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+      ? 'bg-amber-100 text-amber-700 border border-amber-300'
       : effectiveTier === 'starter'
-      ? 'bg-stone-100 text-stone-600 border border-stone-200'
-      : 'bg-stone-50 text-stone-500 border border-stone-200'
+      ? 'bg-slate-100 text-slate-600 border border-slate-300'
+      : 'bg-orange-100 text-orange-700 border border-orange-200'
 
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>

@@ -176,6 +176,16 @@ export default function Onboarding() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-stone-900">{t.name}</p>
                       <p className="text-xs text-stone-400 mt-0.5">{t.total_uses} usos · {t.duration_days} días</p>
+                      {t.items?.length > 0 && (
+                        <ul className="mt-1.5 space-y-0.5">
+                          {t.items.map((item, i) => (
+                            <li key={i} className="text-[10px] text-stone-400 flex items-center gap-1">
+                              <span className="w-1 h-1 rounded-full bg-stone-300 shrink-0" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                     <p className="font-extrabold text-xl text-brand-700 shrink-0">${t.price.toLocaleString('es-AR')}</p>
                   </label>

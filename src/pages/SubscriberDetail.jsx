@@ -72,6 +72,7 @@ export default function SubscriberDetail() {
   const [renewPlanId, setRenewPlanId] = useState('')
   const [saving, setSaving] = useState(false)
   const [registering, setRegistering] = useState(false)
+  const [todayUsage, setTodayUsage] = useState(null)
   const [deleteLogConfirm, setDeleteLogConfirm] = useState(null)
   const [editForm, setEditForm] = useState(null)
   const [startDateConfirm, setStartDateConfirm] = useState(false)
@@ -181,12 +182,30 @@ export default function SubscriberDetail() {
   const renewalEndDate = selectedPlanForRenew
     ? format(addDays(new Date(), selectedPlanForRenew.duration_days), 'dd/MM/yyyy') : '—'
 
+  async function handleOpenUseModal() {
+    setTodayUsage(null)
+    setUseModal(true)
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const { data } = await supabase
+      .from('usage_logs')
+      .select('used_at')
+      .eq('subscriber_id', subscriber.id)
+      .eq('business_id', business.id)
+      .is('deleted_at', null)
+      .gte('used_at', `${today}T00:00:00`)
+      .lt('used_at', `${today}T23:59:59.999`)
+      .order('used_at', { ascending: false })
+      .limit(1)
+    setTodayUsage(data?.[0] ?? null)
+  }
+
   async function handleRegisterUse() {
     setRegistering(true)
     const { error: err } = await registerUse(subscriber, useNotes)
     setRegistering(false)
     setUseModal(false)
     setUseNotes('')
+    setTodayUsage(null)
     if (err) showToast('Error al registrar el uso', 'error')
     else showToast('Uso registrado')
   }
@@ -296,7 +315,7 @@ export default function SubscriberDetail() {
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={() => setUseModal(true)} disabled={!canRegisterUse} className="flex-1">
+          <Button onClick={handleOpenUseModal} disabled={!canRegisterUse} className="flex-1">
             <Check size={15} className="mr-1.5" /> Registrar uso
           </Button>
           <Button variant="secondary" onClick={() => { setRenewPlanId(subscriber.plan_id ?? ''); const p = subscriber.plans ?? plans.find(pl => pl.id === subscriber.plan_id); setRenewAmount(p?.price ? String(p.price) : ''); setRenewModal(true) }} className="flex-1">
@@ -408,7 +427,11 @@ export default function SubscriberDetail() {
                   <p className="text-sm text-stone-700 font-medium">
                     {format(new Date(log.used_at), "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
                   </p>
-                  {log.notes && <p className="text-xs text-stone-400 mt-0.5">{log.notes}</p>}
+                  {log.notes && (
+                    <p className="text-xs text-stone-600 italic mt-1.5 bg-stone-50 rounded-lg px-2.5 py-1.5 border border-stone-100">
+                      {log.notes}
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={() => setDeleteLogConfirm(log)}
@@ -435,7 +458,7 @@ export default function SubscriberDetail() {
             ))}
           </div>
         ) : payments.length === 0 ? (
-          <p className="text-sm text-stone-400">Sin pagos registrados. Los pagos se agregan al renovar una suscripción.</p>
+          <p className="text-sm text-stone-400">Sin pagos registrados todavía.</p>
         ) : (
           <div className="space-y-2">
             {payments.map(p => (
@@ -454,8 +477,16 @@ export default function SubscriberDetail() {
       </div>
 
       {/* Register use modal */}
-      <Modal open={useModal} onClose={() => { setUseModal(false); setUseNotes('') }} title="Registrar uso">
+      <Modal open={useModal} onClose={() => { setUseModal(false); setUseNotes(''); setTodayUsage(null) }} title="Registrar uso">
         <div className="space-y-4">
+          {todayUsage && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-start gap-2.5">
+              <AlertTriangle size={15} className="text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 font-medium leading-relaxed">
+                Este cliente registró un uso el día {format(new Date(todayUsage.used_at), "dd/MM/yyyy 'a las' HH:mm", { locale: es })}. ¿Confirmás otro uso?
+              </p>
+            </div>
+          )}
           <Textarea
             label="Nota (opcional)"
             value={useNotes}
@@ -463,7 +494,7 @@ export default function SubscriberDetail() {
             placeholder="Ej: clase de lunes, corte + barba..."
           />
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => { setUseModal(false); setUseNotes('') }} className="flex-1">Cancelar</Button>
+            <Button variant="outline" onClick={() => { setUseModal(false); setUseNotes(''); setTodayUsage(null) }} className="flex-1">Cancelar</Button>
             <Button onClick={handleRegisterUse} loading={registering} className="flex-1">
               <Check size={15} className="mr-1.5" /> Confirmar
             </Button>

@@ -92,7 +92,17 @@ export function useSubscribers(businessId) {
       .select(`*, plans(${PLANS_SELECT})`)
       .single()
 
-    if (!error) setSubscribers(prev => [...prev, withStatus(data)].sort((a, b) => a.name.localeCompare(b.name)))
+    if (!error) {
+      setSubscribers(prev => [...prev, withStatus(data)].sort((a, b) => a.name.localeCompare(b.name)))
+      const amount = parseFloat(subData.amount)
+      if (amount > 0) {
+        await supabase.from('payments').insert({
+          subscriber_id: data.id,
+          amount,
+          paid_at: new Date().toISOString(),
+        })
+      }
+    }
     return { data, error }
   }
 
