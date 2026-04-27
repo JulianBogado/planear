@@ -28,6 +28,7 @@ import EmailConfirmado from './pages/EmailConfirmado'
 import Admin from './pages/Admin'
 import TerminosCondiciones from './pages/TerminosCondiciones'
 import PoliticaPrivacidad from './pages/PoliticaPrivacidad'
+import { useIsAdmin } from './hooks/useIsAdmin'
 
 function Spinner() {
   return (
@@ -53,6 +54,13 @@ function AppGuard() {
   if (!user) return <Navigate to="/login" replace />
   if (!business) return <Navigate to="/onboarding" replace />
   return <AppLayout business={business} updateBusiness={updateBusiness} />
+}
+
+function AdminGuard() {
+  const isAdmin = useIsAdmin()
+  if (isAdmin === null) return <Spinner />
+  if (isAdmin === false) return <Navigate to="/dashboard" replace />
+  return <Outlet />
 }
 
 function RootRoute() {
@@ -95,7 +103,9 @@ export default function App() {
               <Route path="/agenda" element={<Agenda />} />
               <Route path="/ayuda" element={<Help />} />
               <Route path="/configuracion" element={<Settings />} />
-              <Route path="/admin" element={<Admin />} />
+              <Route element={<AdminGuard />}>
+                <Route path="/admin" element={<Admin />} />
+              </Route>
             </Route>
           </Routes>
         </BrowserRouter>

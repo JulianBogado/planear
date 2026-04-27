@@ -214,6 +214,15 @@ subsmanager/
 - Si después de un reset necesitás acceso admin, hay que volver a insertar el usuario en `public.admin_users`.
 - Snippet recomendado: `supabase/snippets/grant-local-admin.sql`.
 
+### Seguridad de admin
+
+- La ruta `/admin` debe quedar protegida en dos capas: `AdminGuard` en el router + validación defensiva dentro de `Admin.jsx`.
+- `useIsAdmin()` debe recalcularse cuando cambia la sesión autenticada. No asumir cache ni estado previo entre usuarios.
+- `Register.jsx` no debe permitir crear cuentas mientras hay una sesión activa.
+- Las RPCs `admin_list_businesses`, `admin_get_subscribers`, `admin_update_user` y `admin_delete_user` deben fallar explícitamente con `Acceso denegado` si `is_admin()` es falso.
+- `admin_delete_user` no puede borrar usuarios presentes en `admin_users` ni permitir auto-borrado del admin actual.
+- Si una llamada admin devuelve denegación de acceso, el frontend debe limpiar el panel y redirigir a `/dashboard` sin exponer datos previos.
+
 ---
 
 ## Patrones de arquitectura
@@ -420,14 +429,15 @@ Ver detalle en `doc/gestion-suscripcion.md` y `doc/scheduled-downgrade.md`.
 Campo `businesses.is_promo boolean DEFAULT false` que permite otorgar acceso pro gratuito a negocios seleccionados.
 
 - **Panel admin:** `/admin` (solo superusuarios). Accesible desde el dropdown Config → Panel admin.
+- **Guardado del acceso:** `/admin` usa `AdminGuard`; el menú "Panel admin" solo se muestra si `useIsAdmin()` resolvió `true`.
 - **Tarjetas expandibles** por negocio: nombre, tier, cantidad de suscriptores. Al expandir: contacto copiable (email, teléfonos), redes, rubro, fecha de alta.
 - **Acciones por negocio:** dar/revocar acceso pro promo (con datepicker de vencimiento), editar datos del dueño y nombre de negocio, eliminar usuario completo (con confirmación).
 - **RPCs SECURITY DEFINER:** `admin_list_businesses()`, `admin_update_user(...)`, `admin_delete_user(uuid)`.
-- `admin_delete_user`: borra en orden correcto respetando FK NO ACTION (usage_logs → payments → businesses → profiles → auth.users).
+- `admin_delete_user`: borra en orden correcto respetando FK NO ACTION (usage_logs → payments → businesses → profiles → auth.users), pero nunca puede borrar una cuenta admin ni permitir auto-borrado del admin actual.
 - **Policy `businesses_admin_update`** (PERMISSIVE FOR UPDATE): permite al admin actualizar negocios ajenos. Sin esta policy, los UPDATEs silenciosamente afectaban 0 filas.
 - **Settings:** si `business.is_promo = true`, muestra badge "Pro (promo)" y "Acceso promocional hasta: fecha" en vez de "Próximo cobro".
 - **MP Webhook:** si `is_promo = true`, no modifica `tier` ni `subscription_ends_at` al procesar eventos de MP.
-- Ver detalle en `doc/promo-access.md` y `doc/admin-panel-v2.md`.
+- Ver detalle en `doc/promo-access.md`, `doc/admin-panel-v2.md` y `doc/admin-security-hardening-2026-04-27.md`.
 
 ---
 

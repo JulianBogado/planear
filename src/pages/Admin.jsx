@@ -57,7 +57,12 @@ function CopyChip({ label, value }) {
 
 // ─── Edit modal ─────────────────────────────────────────────────────────────
 
-function EditModal({ biz, open, onClose, onSaved }) {
+function isAccessDeniedError(error) {
+  const message = error?.message?.toLowerCase?.() ?? ''
+  return message.includes('acceso denegado')
+}
+
+function EditModal({ biz, open, onClose, onSaved, onAccessDenied }) {
   const { showToast } = useToast()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -89,7 +94,11 @@ function EditModal({ biz, open, onClose, onSaved }) {
     })
     setLoading(false)
     if (error) {
-      showToast('No se pudo guardar', 'error')
+      if (isAccessDeniedError(error)) {
+        onAccessDenied?.()
+        return
+      }
+      showToast(error.message || 'No se pudo guardar', 'error')
     } else {
       showToast('Cambios guardados', 'success')
       onSaved({ ...biz, name: form.business_name, owner_nombre: form.nombre, owner_apellido: form.apellido, owner_phone: form.telefono })
@@ -132,7 +141,7 @@ function EditModal({ biz, open, onClose, onSaved }) {
 
 // ─── Delete modal ────────────────────────────────────────────────────────────
 
-function DeleteModal({ biz, open, onClose, onDeleted }) {
+function DeleteModal({ biz, open, onClose, onDeleted, onAccessDenied }) {
   const { showToast } = useToast()
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -147,7 +156,11 @@ function DeleteModal({ biz, open, onClose, onDeleted }) {
     const { error } = await supabase.rpc('admin_delete_user', { p_user_id: biz.user_id })
     setLoading(false)
     if (error) {
-      showToast('No se pudo eliminar el usuario', 'error')
+      if (isAccessDeniedError(error)) {
+        onAccessDenied?.()
+        return
+      }
+      showToast(error.message || 'No se pudo eliminar el usuario', 'error')
     } else {
       showToast(`${biz.name} eliminado`, 'success')
       onDeleted(biz.id)
@@ -184,7 +197,7 @@ function DeleteModal({ biz, open, onClose, onDeleted }) {
 
 // ─── Promo panel (grant / revoke) ────────────────────────────────────────────
 
-function PromoPanel({ biz, onGranted, onRevoked }) {
+function PromoPanel({ biz, onGranted, onRevoked, onAccessDenied }) {
   const { showToast } = useToast()
   const [expanded, setExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -203,7 +216,11 @@ function PromoPanel({ biz, onGranted, onRevoked }) {
       .eq('id', biz.id)
     setLoading(false)
     if (error) {
-      showToast('No se pudo otorgar acceso', 'error')
+      if (isAccessDeniedError(error)) {
+        onAccessDenied?.()
+        return
+      }
+      showToast(error.message || 'No se pudo otorgar acceso', 'error')
     } else {
       showToast(`Acceso pro promo otorgado a ${biz.name}`, 'success')
       setExpanded(false)
@@ -219,7 +236,11 @@ function PromoPanel({ biz, onGranted, onRevoked }) {
       .eq('id', biz.id)
     setLoading(false)
     if (error) {
-      showToast('No se pudo revocar acceso', 'error')
+      if (isAccessDeniedError(error)) {
+        onAccessDenied?.()
+        return
+      }
+      showToast(error.message || 'No se pudo revocar acceso', 'error')
     } else {
       showToast(`Acceso pro revocado para ${biz.name}`, 'success')
       onRevoked(biz.id)
@@ -269,7 +290,7 @@ const STATUS_DOT = {
   no_uses:        'bg-red-400',
 }
 
-function BizCard({ biz, onUpdate, onDeleted }) {
+function BizCard({ biz, onUpdate, onDeleted, onAccessDenied }) {
   const [expanded, setExpanded] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -282,8 +303,19 @@ function BizCard({ biz, onUpdate, onDeleted }) {
     if (!expanded || subs !== null) return
     setSubsLoading(true)
     supabase.rpc('admin_get_subscribers', { p_business_id: biz.id })
-      .then(({ data }) => { setSubs(data ?? []); setSubsLoading(false) })
-  }, [expanded, biz.id, subs])
+      .then(({ data, error }) => {
+        if (error) {
+          if (isAccessDeniedError(error)) {
+            onAccessDenied?.()
+            return
+          }
+          setSubs([])
+        } else {
+          setSubs(data ?? [])
+        }
+      })
+      .finally(() => setSubsLoading(false))
+  }, [expanded, biz.id, subs, onAccessDenied])
 
   function handleGranted(id, expiryDate) {
     onUpdate(id, { tier: 'pro', is_promo: true, subscription_ends_at: new Date(expiryDate + 'T23:59:59').toISOString() })
@@ -404,7 +436,7 @@ function BizCard({ biz, onUpdate, onDeleted }) {
                   Promo activa hasta {format(new Date(biz.subscription_ends_at), 'dd/MM/yyyy')}
                 </p>
               )}
-              <PromoPanel biz={biz} onGranted={handleGranted} onRevoked={handleRevoked} />
+              <PromoPanel biz={biz} onGranted={handleGranted} onRevoked={handleRevoked} onAccessDenied={onAccessDenied} />
             </div>
 
             {/* Acciones */}
@@ -433,12 +465,14 @@ function BizCard({ biz, onUpdate, onDeleted }) {
         open={editOpen}
         onClose={() => setEditOpen(false)}
         onSaved={updated => onUpdate(biz.id, updated)}
+        onAccessDenied={onAccessDenied}
       />
       <DeleteModal
         biz={biz}
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         onDeleted={onDeleted}
+        onAccessDenied={onAccessDenied}
       />
     </>
   )
@@ -448,26 +482,51 @@ function BizCard({ biz, onUpdate, onDeleted }) {
 
 export default function Admin() {
   const isSuperuser = useIsAdmin()
+  const { showToast } = useToast()
   const [businesses, setBusinesses] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [accessDenied, setAccessDenied] = useState(false)
+
+  function handleAccessDenied() {
+    setBusinesses([])
+    setLoading(false)
+    setAccessDenied(true)
+  }
 
   useEffect(() => {
     if (!isSuperuser) return
     async function fetchAll() {
       setLoading(true)
-      const { data } = await supabase.rpc('admin_list_businesses')
+      const { data, error } = await supabase.rpc('admin_list_businesses')
+      if (error) {
+        if (isAccessDeniedError(error)) {
+          handleAccessDenied()
+        } else {
+          showToast('No se pudo cargar el panel admin', 'error')
+          setBusinesses([])
+          setLoading(false)
+        }
+        return
+      }
       setBusinesses(data ?? [])
       setLoading(false)
     }
     fetchAll()
-  }, [isSuperuser])
+  }, [isSuperuser, showToast])
+
+  useEffect(() => {
+    if (accessDenied) {
+      showToast('No tenés permisos para acceder al panel admin.', 'error')
+    }
+  }, [accessDenied, showToast])
 
   if (isSuperuser === null) return (
     <div className="flex justify-center py-16">
       <div className="w-7 h-7 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
     </div>
   )
+  if (accessDenied) return <Navigate to="/dashboard" replace />
   if (isSuperuser === false) return <Navigate to="/dashboard" replace />
 
   const filtered = businesses.filter(b => {
@@ -544,6 +603,7 @@ export default function Admin() {
               biz={biz}
               onUpdate={handleUpdate}
               onDeleted={handleDeleted}
+              onAccessDenied={handleAccessDenied}
             />
           ))}
         </div>

@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import SEOHead from '../components/seo/SEOHead'
 import { trackEvent } from '../lib/analytics'
+import { useAuth } from '../context/AuthContext'
 
 const INPUT_CLASS = "w-full bg-surface-tint border-0 border-b-2 border-stone-200 focus:border-brand-600 rounded-t-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-0 transition-colors placeholder:text-stone-400"
 const LABEL_CLASS = "block text-[10px] font-semibold text-stone-500 uppercase tracking-widest"
 
 export default function Register() {
+  const { user, loading: authLoading } = useAuth()
   const [nombre, setNombre] = useState('')
   const [apellido, setApellido] = useState('')
   const [telefono, setTelefono] = useState('')
@@ -17,6 +19,8 @@ export default function Register() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [registered, setRegistered] = useState(false)
+
+  if (!authLoading && user) return <Navigate to="/dashboard" replace />
 
   async function handleSubmit(e) {
     e.preventDefault()

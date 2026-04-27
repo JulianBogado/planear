@@ -120,3 +120,6 @@ set SUPABASE_PROJECT_REF_PROD=tu_project_ref_prod
 - Nunca exponer `SUPABASE_SERVICE_ROLE_KEY` en el cliente.
 - Las Edge Functions leen sus secrets desde variables de entorno del proyecto o desde `supabase/env/*.env` cuando corren localmente.
 - `create-subscription`, `cancel-subscription`, `contact-form`, `verify-subscription` y `mp-webhook` ya no deben depender de dominios hardcodeados para CORS o retornos.
+- `/admin` ahora usa guard dedicado en router y chequeo defensivo en la pagina.
+- Las RPCs `admin_list_businesses`, `admin_get_subscribers`, `admin_update_user` y `admin_delete_user` deben devolver `Acceso denegado` si el caller no es admin.
+- `admin_delete_user` no puede borrar cuentas presentes en `admin_users` ni permitir auto-borrado del admin actual.

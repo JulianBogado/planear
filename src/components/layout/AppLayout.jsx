@@ -164,7 +164,7 @@ export default function AppLayout({ business, updateBusiness }) {
                   <Settings2 size={14} className="text-stone-400" />
                   Configuración
                 </button>
-                {isSuperuser && (
+                {isSuperuser === true && (
                   <button
                     onClick={() => {
                       navigate('/admin')
@@ -289,7 +289,7 @@ export default function AppLayout({ business, updateBusiness }) {
                 <Settings2 size={14} className="text-stone-400" />
                 Configuración
               </button>
-              {isSuperuser && (
+              {isSuperuser === true && (
                 <button
                   onClick={() => {
                     navigate('/admin')
