@@ -33,4 +33,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION admin_get_subscribers(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_subscribers(uuid) TO authenticated;;

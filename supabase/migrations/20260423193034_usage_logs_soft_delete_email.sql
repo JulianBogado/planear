@@ -56,4 +56,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION delete_usage_log_atomic(uuid, uuid, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION delete_usage_log_atomic(uuid, uuid, text) TO authenticated;;

@@ -9,10 +9,10 @@
   - `development` con `npm run dev`
   - `staging` con `npm run dev:staging` y `npm run build:staging`
   - `production` con `npm run build`
-- Se agregaron templates de entorno para frontend:
-  - `.env.development.example`
-  - `.env.staging.example`
-  - `.env.production.example`
+- El frontend quedó con estos archivos finales:
+  - `.env.development.local`
+  - `.env.staging.local`
+  - `.env.production.local`
 - Se agregaron templates de secrets para Edge Functions:
   - `supabase/env/local.functions.example`
   - `supabase/env/staging.functions.example`
@@ -26,9 +26,15 @@
 - `create-subscription` ahora toma el `back_url` desde `APP_SITE_URL`.
 - `verify-subscription` dejó de responder con `Access-Control-Allow-Origin: *`.
 - Se sanitizaron referencias operativas para no depender del `project-ref` productivo dentro del flujo de trabajo documentado.
+- Se trajo el historial remoto faltante de migraciones (`20260417...` a `20260423...`).
+- Se agregó `20260417000000_initial_schema_bootstrap.sql` para crear el schema base que no estaba versionado.
+- Se agregó `20260424010000_enable_rls_base_policies.sql` para re-habilitar RLS y policies base en local.
+- Se agregó `supabase/seed.sql` como seed mínimo válido.
+- Se agregó `supabase/snippets/grant-local-admin.sql` para promover admins locales.
 
 ## Convenciones nuevas
 
 - No usar `.env.local` como archivo principal del frontend.
 - No usar `supabase link` para alternar entre staging y produccion.
 - Toda operacion remota de Supabase debe llevar `--project-ref` explicito.
+- Después de `db reset` local, los admins deben volver a insertarse en `public.admin_users`.

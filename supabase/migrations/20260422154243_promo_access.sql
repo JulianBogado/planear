@@ -8,6 +8,7 @@ ALTER TABLE businesses
 -- 2. Extender la policy RESTRICTIVE para incluir is_promo
 -- Necesitamos reemplazar la policy existente para agregar is_promo al chequeo
 DROP POLICY IF EXISTS businesses_protect_tier_fields ON businesses;
+DROP FUNCTION IF EXISTS admin_list_businesses();
 
 CREATE POLICY businesses_protect_tier_fields ON businesses
   AS RESTRICTIVE
@@ -55,4 +56,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION admin_list_businesses() TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_list_businesses() TO authenticated;;

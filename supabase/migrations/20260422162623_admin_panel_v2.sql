@@ -1,8 +1,4 @@
 -- Admin Panel v2
--- 1. Policy permissive para que admin pueda hacer UPDATE en negocios ajenos
--- 2. RPC admin_list_businesses actualizada con más info
--- 3. RPC admin_update_user para editar perfil + nombre de negocio
--- 4. RPC admin_delete_user para borrar usuario completo
 
 -- 1. Policy UPDATE permissiva para admin
 CREATE POLICY businesses_admin_update ON businesses
@@ -11,7 +7,7 @@ CREATE POLICY businesses_admin_update ON businesses
   USING (is_admin())
   WITH CHECK (is_admin());
 
--- 2. Actualizar admin_list_businesses con más campos
+-- 2. Drop y recrear admin_list_businesses con más campos
 DROP FUNCTION IF EXISTS admin_list_businesses();
 
 CREATE FUNCTION admin_list_businesses()
@@ -75,10 +71,10 @@ GRANT EXECUTE ON FUNCTION admin_list_businesses() TO authenticated;
 
 -- 3. RPC para editar perfil del dueño + nombre del negocio
 CREATE OR REPLACE FUNCTION admin_update_user(
-  p_user_id      uuid,
-  p_nombre       text,
-  p_apellido     text,
-  p_telefono     text,
+  p_user_id       uuid,
+  p_nombre        text,
+  p_apellido      text,
+  p_telefono      text,
   p_business_name text
 )
 RETURNS void
@@ -103,7 +99,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION admin_update_user(uuid, text, text, text, text) TO authenticated;
 
--- 4. Permiso para que la función SECURITY DEFINER pueda borrar auth users
+-- 4. Permiso para borrar auth users desde función SECURITY DEFINER
 GRANT DELETE ON auth.users TO postgres;
 
 -- 5. RPC para eliminar usuario completo
@@ -123,10 +119,8 @@ BEGIN
   SELECT id INTO v_business_id FROM businesses WHERE user_id = p_user_id;
 
   IF v_business_id IS NOT NULL THEN
-    -- Borrar tablas con FK NO ACTION primero
     DELETE FROM usage_logs WHERE business_id = v_business_id;
     DELETE FROM payments   WHERE business_id = v_business_id;
-    -- Borrar business (cascada: subscribers, plans, appointments, business_availability)
     DELETE FROM businesses WHERE id = v_business_id;
   END IF;
 
@@ -135,4 +129,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION admin_delete_user(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_delete_user(uuid) TO authenticated;;

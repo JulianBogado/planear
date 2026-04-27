@@ -51,6 +51,7 @@ VITE_SUPABASE_ANON_KEY=...
 
 > ⚠️ `VITE_SUPERUSER_EMAIL` fue eliminado del frontend (security review 2026-04-19). La verificación de admin se hace exclusivamente via la RPC `is_admin()` en Supabase — nunca comparar email en el cliente. Ver `src/hooks/useIsAdmin.js`.
 > `npm run dev` usa `development` y debe apuntar al Supabase local en Docker.
+> El entorno local también depende de `supabase/env/local.functions.env`, `supabase/seed.sql` y `supabase/snippets/grant-local-admin.sql`.
 
 ---
 
@@ -203,6 +204,15 @@ subsmanager/
 | `public_cancel_appointment(p_appointment_id, p_subscriber_id)` | Cancela turno (sin auth) |
 | `public_book_appointment(...)` | Crea turno (sin auth) |
 | `delete_usage_log_atomic(p_log_id, p_business_id, p_delete_reason)` | Soft-delete de uso + restaura 1 uso al suscriptor + recalcula status, en una transacción atómica |
+
+### Notas del entorno local
+
+- `npx supabase start` y `npx supabase db reset --local --yes` ya levantan la base completa desde cero.
+- `20260417000000_initial_schema_bootstrap.sql` crea el schema base que faltaba del historial.
+- `20260424010000_enable_rls_base_policies.sql` re-habilita RLS y las policies base en local.
+- `supabase/seed.sql` existe y corre en cada reset local.
+- Si después de un reset necesitás acceso admin, hay que volver a insertar el usuario en `public.admin_users`.
+- Snippet recomendado: `supabase/snippets/grant-local-admin.sql`.
 
 ---
 

@@ -73,6 +73,7 @@ Nota importante:
 - `VITE_SUPERUSER_EMAIL` fue eliminado del frontend en la review de seguridad del `2026-04-19`.
 - La verificación de admin se hace exclusivamente con `src/hooks/useIsAdmin.js` y la RPC `is_admin()`.
 - `npm run dev` debe usar siempre el entorno `development` local, no staging ni producción.
+- El entorno local usa además `supabase/env/local.functions.env`, `supabase/seed.sql` y el snippet `supabase/snippets/grant-local-admin.sql`.
 
 ## Rutas que conviene recordar
 
@@ -233,6 +234,14 @@ Usar `useSubscription(business)` para permisos de UI y feature flags.
 | `appointments` | Turnos |
 | `business_availability` | Bloques horarios múltiples |
 | `support_messages` | Soporte |
+
+### Entorno local de Supabase
+
+- `npx supabase start` y `npx supabase db reset --local --yes` ya reconstruyen la base local completa desde cero.
+- `20260417000000_initial_schema_bootstrap.sql` crea el schema base que faltaba en el historial.
+- `20260424010000_enable_rls_base_policies.sql` vuelve a habilitar RLS y policies base para que local refleje mejor producción.
+- `supabase/seed.sql` corre en cada reset local.
+- Después de un reset local, si necesitás admin, hay que volver a insertar el usuario en `public.admin_users`.
 
 ### RPC públicas/clave
 

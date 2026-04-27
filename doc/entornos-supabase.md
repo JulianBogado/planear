@@ -13,6 +13,9 @@ Separar claramente los tres entornos de trabajo del proyecto para evitar que el 
   - Es el entorno por defecto de `npm run dev`.
   - Usa `.env.development.local` para el frontend.
   - Usa `supabase/env/local.functions.env` para Edge Functions locales.
+  - Usa `supabase/seed.sql` en cada reset local.
+  - Se apoya en `20260417000000_initial_schema_bootstrap.sql` para crear el schema base.
+  - Rehabilita RLS y policies base con `20260424010000_enable_rls_base_policies.sql`.
 
 - **Staging**
   - Vive en un proyecto remoto nuevo de Supabase.
@@ -39,14 +42,6 @@ Variables requeridas:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-
-Templates incluidos:
-
-- `.env.development.example`
-- `.env.staging.example`
-- `.env.production.example`
-
-Copias locales esperadas:
 
 - `.env.development.local`
 - `.env.staging.local`
@@ -96,6 +91,10 @@ Scripts npm preparados:
 - `npm run supabase:secrets:set:staging`
 - `npm run supabase:secrets:set:prod`
 
+Snippets útiles:
+
+- `supabase/snippets/grant-local-admin.sql`
+
 Variables necesarias para deploy remoto:
 
 - `SUPABASE_PROJECT_REF_STAGING`
@@ -111,8 +110,9 @@ Hoy staging sigue sin URL publica propia, asi que los flujos externos que depend
 
 ## Checklist rapido
 
-1. Copiar el template correcto de frontend al `.env.[mode].local` adecuado.
+1. Completar `.env.development.local`, `.env.staging.local` y `.env.production.local` según corresponda.
 2. Copiar el template correcto de functions a `supabase/env/*.env`.
 3. Levantar Supabase local con `npm run supabase:start`.
 4. Correr `npm run dev` para local o `npm run dev:staging` para remoto.
-5. Para deploys y secrets remotos, exportar `SUPABASE_PROJECT_REF_STAGING` y `SUPABASE_PROJECT_REF_PROD`.
+5. Si hacés `db reset` local, volver a otorgar admin si lo necesitás.
+6. Para deploys y secrets remotos, exportar `SUPABASE_PROJECT_REF_STAGING` y `SUPABASE_PROJECT_REF_PROD`.
