@@ -332,7 +332,7 @@ Decisiones importantes:
 - Si `business.is_promo = true`, el webhook no debe tocar `tier` ni `subscription_ends_at`.
 
 UX a recordar:
-- `AppLayout.jsx` muestra badge del plan en el navbar: `pro` dorado, `starter` plateado, `free` neutro.
+- `AppLayout.jsx` muestra badge del plan en el navbar: `pro` dorado (amber), `starter` plateado (slate), `free` bronce (orange).
 - `Pricing.jsx`, `Dashboard.jsx` y `AppLayout.jsx` pueden mostrar estado de `Verificando pago...` y disparar reconciliación.
 - `Settings.jsx` muestra feedback inmediato al pedir la baja y luego recarga.
 
@@ -381,6 +381,28 @@ Referencia:
   - `sign_up`
   - `cta_click`
 - Referencia: `doc/analytics-ga4.md`
+
+## Comportamientos clave a no romper (2026-04-27)
+
+### Subscribers (`src/pages/Subscribers.jsx`)
+- Tiene **modo de selección masiva** (botón "Seleccionar"). Al activarlo las tarjetas muestran checkbox y el click hace toggle. Con items seleccionados aparece una barra fija al pie con acciones: renovar, registrar uso y eliminar (eliminar requiere escribir "ELIMINAR").
+- Al hacer click en "Registrar uso" en una tarjeta, **consulta usage_logs del día actual** antes de mostrar la confirmación. Si ya hay un uso, el mensaje cambia a advertencia ámbar.
+- El formulario de nuevo cliente tiene campo **"Monto pagado (opcional)"**. Si se completa, `createSubscriber` inserta un registro en `payments`.
+
+### SubscriberDetail (`src/pages/SubscriberDetail.jsx`)
+- El botón "Registrar uso" llama a `handleOpenUseModal()` (no directamente `setUseModal(true)`). Esta función consulta `usage_logs` del día y, si existe un uso, muestra un bloque de advertencia dentro del modal.
+- Las notas en el historial de usos se muestran con estilo propio (`bg-stone-50`, borde, itálica) — no modificar a texto plano.
+
+### Onboarding (`src/pages/Onboarding.jsx`)
+- El paso 3 muestra los `items` de cada template como bullets. No eliminar ese bloque aunque `items` esté vacío (el render está condicionado a `t.items?.length > 0`).
+
+### AppLayout (`src/components/layout/AppLayout.jsx`)
+- `tierBadgeClass`: pro = amber, starter = slate, free = orange. No usar stone/gray para ninguno de los tres.
+
+### useSubscribers (`src/hooks/useSubscribers.js`)
+- `createSubscriber` acepta `subData.amount`. Si es mayor a 0, inserta en `payments` tras crear el subscriber. El insert de payment no bloquea la operación principal si falla.
+
+Referencia completa: `doc/ux-improvements-2026-04-27.md`
 
 ## No implementado todavía
 

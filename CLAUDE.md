@@ -470,7 +470,7 @@ Campo `businesses.is_promo boolean DEFAULT false` que permite otorgar acceso pro
 
 - `AppLayout.jsx`
   - Muestra el badge del plan actual en el navbar/header.
-  - `pro` usa badge dorado, `starter` plateado y `free` neutro.
+  - `pro` usa badge dorado (amber), `starter` plateado (slate) y `free` bronce (orange).
   - Si el usuario vuelve del checkout con reconciliacion pendiente, muestra `Verificando pago...` en el header.
 
 - `Pricing.jsx`
@@ -519,6 +519,20 @@ Campo `businesses.is_promo boolean DEFAULT false` que permite otorgar acceso pro
 Ver detalle en `doc/analytics-ga4.md`.
 
 ---
+
+## Cambios UX — 2026-04-27
+
+Ver detalle completo en `doc/ux-improvements-2026-04-27.md`.
+
+| Qué | Archivo/s |
+|-----|-----------|
+| Onboarding paso 3 muestra `items` de cada template | `Onboarding.jsx` |
+| Badge de tier removido del saludo en Dashboard | `Dashboard.jsx` |
+| Colores tier: amber=pro, slate=starter, orange=free | `AppLayout.jsx` |
+| Check "uso del día" antes de confirmar registro | `Subscribers.jsx`, `SubscriberDetail.jsx` |
+| Notas de uso con estilo visible (bg-stone-50, itálica) | `SubscriberDetail.jsx` |
+| Campo "Monto pagado" en alta de cliente → inserta en `payments` | `Subscribers.jsx`, `useSubscribers.js` |
+| Bulk selection: renovar / registrar uso / eliminar con confirmaciones | `Subscribers.jsx` |
 
 ## Lo que NO está implementado aún (V2+)
 
