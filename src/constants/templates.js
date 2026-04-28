@@ -101,7 +101,7 @@ export const TEMPLATES = {
     {
       name: 'Una mas y arrancamos',
       description: 'Para el que no falta ningún jueves ni viernes',
-      price: 9000, total_uses: 16, duration_days: 30,
+      price: 90000, total_uses: 16, duration_days: 30,
       items: ['16 cervezas artesanales', 'Variedad de estilos', 'Vaso de regalo', 'Descuento en picadas'],
     },
   ],

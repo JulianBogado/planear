@@ -23,17 +23,18 @@ Contrato del frontend:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
-Archivos de ejemplo incluidos:
-
-- `.env.development.example`
-- `.env.staging.example`
-- `.env.production.example`
-
-Copialos a:
+Archivos usados por Vite segun el modo:
 
 - `.env.development.local`
 - `.env.staging.local`
 - `.env.production.local`
+
+Notas:
+
+- `npm run dev` usa `.env.development.local`
+- `npm run dev:staging` usa `.env.staging.local`
+- `npm run build` usa `.env.production.local`
+- `.env.local` ya no debe usarse como archivo principal del frontend
 
 Vite resuelve por modo:
 
@@ -72,15 +73,16 @@ Variables principales:
 
 ```bash
 npm install
-copy .env.development.example .env.development.local
-copy supabase\\env\\local.functions.example supabase\\env\\local.functions.env
 npm run supabase:start
 npm run dev
 ```
 
 Notas:
 
+- El repo ya trabaja con `.env.development.local`, `.env.staging.local` y `.env.production.local`.
+- Si falta alguno, crearlo manualmente con `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` del entorno correspondiente.
 - El `anon key` local se obtiene del stack local de Supabase.
+- Para functions locales, usar `supabase/env/local.functions.env`. Si no existe, se puede crear a partir de `supabase/env/local.functions.example`.
 - Si no vas a probar Mercado Pago o mail en local, podés dejar esos secrets vacios.
 
 ## Comandos
